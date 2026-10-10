@@ -1,0 +1,155 @@
+{
+  "generatedAt": "2026-10-10T12:09:41.062Z",
+  "parcelCount": 354512,
+  "totalAreaHa": 1759743.5,
+  "sequenceTotal": 817,
+  "topSequences": [
+    {
+      "sequence": "10-10-10",
+      "codes": [
+        10,
+        10,
+        10
+      ],
+      "count": 30427,
+      "ratio": 0.08583,
+      "color": "#F2D24B"
+    },
+    {
+      "sequence": "3-7-3",
+      "codes": [
+        3,
+        7,
+        3
+      ],
+      "count": 17100,
+      "ratio": 0.04824,
+      "color": "#E07B2E"
+    },
+    {
+      "sequence": "10-10-6",
+      "codes": [
+        10,
+        10,
+        6
+      ],
+      "count": 15926,
+      "ratio": 0.04492,
+      "color": "#A3D14A"
+    },
+    {
+      "sequence": "6-10-6",
+      "codes": [
+        6,
+        10,
+        6
+      ],
+      "count": 9743,
+      "ratio": 0.02748,
+      "color": "#3E9FE0"
+    },
+    {
+      "sequence": "10-10-8",
+      "codes": [
+        10,
+        10,
+        8
+      ],
+      "count": 9400,
+      "ratio": 0.02652,
+      "color": "#E86FA6"
+    },
+    {
+      "sequence": "8-8-8",
+      "codes": [
+        8,
+        8,
+        8
+      ],
+      "count": 8402,
+      "ratio": 0.0237,
+      "color": "#35BFA0"
+    },
+    {
+      "sequence": "6-10-8",
+      "codes": [
+        6,
+        10,
+        8
+      ],
+      "count": 8237,
+      "ratio": 0.02323,
+      "color": "#9B72D9"
+    },
+    {
+      "sequence": "6-6-8",
+      "codes": [
+        6,
+        6,
+        8
+      ],
+      "count": 8105,
+      "ratio": 0.02286,
+      "color": "#D8544F"
+    },
+    {
+      "sequence": "6-10-10",
+      "codes": [
+        6,
+        10,
+        10
+      ],
+      "count": 7490,
+      "ratio": 0.02113,
+      "color": "#A98E6B"
+    },
+    {
+      "sequence": "8-10-8",
+      "codes": [
+        8,
+        10,
+        8
+      ],
+      "count": 7285,
+      "ratio": 0.02055,
+      "color": "#8C97A3"
+    }
+  ],
+  "stability": {
+    "baseline": 2024,
+    "years": [
+      2024,
+      2025,
+      2026
+    ],
+    "changes": {
+      "0": 53567,
+      "1": 138826,
+      "2": 162119
+    },
+    "averageChanges": 1.306,
+    "stableShare": 0.1511,
+    "averageStabilityIndex": 0.347
+  },
+  "diversity": {
+    "typesHistogram": {
+      "1": 53567,
+      "2": 195134,
+      "3": 105811
+    },
+    "averageShannon": 0.678,
+    "averageSimpson": 0.444,
+    "dominant": {
+      "1": 731,
+      "2": 9796,
+      "3": 74725,
+      "4": 2663,
+      "5": 5559,
+      "6": 58363,
+      "7": 6200,
+      "8": 82457,
+      "9": 3008,
+      "10": 111010
+    }
+  }
+}

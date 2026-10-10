@@ -7,29 +7,62 @@
     </header>
 
     <ul class="rt-list">
-      <li v-for="item in items" :key="item.label">
+      <li
+        v-for="item in items"
+        :key="item.sequence"
+        class="rt-item"
+        :class="{ clicked: isActive(item.sequence) }"
+        :title="activeSequence ? (isActive(item.sequence) ? '再次点击显示前十种全部' : '只显示该轮作类型') : '点击只显示该轮作类型'"
+        @click="clickItem(item.sequence)"
+      >
         <span class="rt-swatch" :style="{ backgroundColor: item.color }"></span>
         <span class="rt-label">{{ item.label }}</span>
+        <span class="rt-count">{{ item.countText }}</span>
       </li>
     </ul>
 
-    <p class="rt-note">示例序列来自原型稿；逐地块轮作类型需要按地块统计 2024—2026 的作物序列，暂未接入，逐年主导作物见左侧统计面板。</p>
+    <p class="rt-note">
+      <template v-if="items.length">
+        2024—2026 三年序列，共 {{ totalText }} 种组合，这里按地块数取前 {{ items.length }} 种。
+      </template>
+      <template v-else>正在读取轮作数据…</template>
+    </p>
   </section>
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { usePanelDrag } from '@/composables/usePanelDrag'
+import useMapStore from '@/stores/map'
+import { cropShortName } from '@/utils/crop-types'
 
+const store = useMapStore()
+const { rotationSelected } = storeToRefs(store)
 const { panel, panelStyle, startDrag } = usePanelDrag()
 
-// 原型稿里的示例轮作序列，颜色沿用原来的取色习惯，
-// 接入真实数据前不要当成实际统计结果
-const items = [
-  { label: '小麦—玉米—小麦', color: '#d9a039' },
-  { label: '玉米—小麦—玉米', color: '#4d9ae8' },
-  { label: '小麦—其他—小麦', color: '#e8578f' },
-  { label: '玉米—蔬菜—玉米', color: '#58c98a' }
-]
+const stats = ref(null)
+const activeSequence = computed(() => rotationSelected.value || '')
+// 没选中时前十种都亮着，选中后只有这一类是亮的
+const isActive = sequence => !activeSequence.value || activeSequence.value === sequence
+const clickItem = sequence => store.toggleRotationType(sequence)
+const totalText = computed(() => Number((stats.value && stats.value.sequenceTotal) || 0).toLocaleString('zh-CN'))
+
+// 轮作类型直接用 1009 数据里 SEQUENCE 的统计结果，
+// 颜色也从同一份数据来，和地图上的 crop-rotation-10 样式一致
+const items = computed(() => {
+  const list = (stats.value && stats.value.topSequences) || []
+  return list.map(item => ({
+    sequence: item.sequence,
+    color: item.color,
+    label: item.codes.map(cropShortName).join('—'),
+    countText: Number(item.count).toLocaleString('zh-CN')
+  }))
+})
+
+onMounted(async () => {
+  stats.value = await store.getCropTemporalStats()
+})
 </script>
 
 <style scoped>
@@ -38,7 +71,7 @@ const items = [
   right: 14px;
   bottom: 100px;
   z-index: 1200;
-  width: 196px;
+  width: 244px;
   padding: 0 0 10px;
   box-sizing: border-box;
   color: var(--ink-900);
@@ -87,12 +120,41 @@ const items = [
   font-size: 12px;
 }
 
+/* 图例色块和地图配色同源，见 geoserver/crop-rotation-10.sld */
 .rt-swatch {
-  width: 13px;
-  height: 13px;
   flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
   border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1);
+}
+
+.rt-item {
+  cursor: pointer;
+}
+
+.rt-item:not(.clicked) .rt-swatch {
+  opacity: .3;
+}
+
+.rt-item:not(.clicked) .rt-label,
+.rt-item:not(.clicked) .rt-count {
+  color: #b3bfcd;
+}
+
+.rt-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-700);
+}
+
+.rt-count {
+  flex: 0 0 auto;
+  color: var(--ink-300);
+  font-variant-numeric: tabular-nums;
 }
 
 .rt-note {

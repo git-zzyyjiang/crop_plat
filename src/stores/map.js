@@ -41,9 +41,11 @@ import { fromArrayBuffer } from 'geotiff';
 import { sampleParcelMarkers, loadParcelAnimationFeatures, parcelSweepProgress } from '@/utils/parcel-animation';
 import { fetchRecognitionFeatures } from '@/utils/recognition-data';
 import {
-    CROP_TYPES, CROP_YEARS, CROP_STYLE_NAME, CROP_STATS_URL,
+    CROP_TYPES, CROP_YEARS, CROP_STYLE_NAME, CROP_STATS_URL, CROP_TEMPORAL_STATS_URL,
+    CROP_ROTATION_LAYER, CROP_ROTATION_STYLE, CROP_STABILITY_STYLE,
     CROP_PARCEL_FIELD, CROP_TYPE_FIELD,
-    cropLayerName, cropTypeName, cropFilterExpression
+    cropLayerName, cropTypeName, cropFilterExpression,
+    rotationFilterExpression, stabilityFilterExpression
 } from '@/utils/crop-types';
 
 
@@ -85,10 +87,14 @@ const CROP_ANALYSIS_BASELINE_YEAR = CROP_YEARS[0]; // 稳定性分析的基准�
 const CROP_ANALYSIS_PARCEL_FIELD = CROP_PARCEL_FIELD; // 地块标识，三年同一个编号
 const CROP_ANALYSIS_TYPE_FIELD = CROP_TYPE_FIELD;     // 作物类型编码 1-10
 const CROP_ANALYSIS_MAX_FEATURES = 400000; // 单年单次取数的要素上限
-// 扫描层就绪后保留12秒识别动画，使用真实作物编码对应的颜色。
-const CROP_ANALYSIS_BLINK_MIN_MS = 12000;
-// 识别动画里每种颜色停留的时间，10 种颜色轮一遍约 12 秒
+// 框选后先让框内空着（只留底图），这段时间进度条显示"渲染图层中"
+const CROP_ANALYSIS_PREPARE_MS = 1000;
+// 换色动画至少跑这么久：每种颜色停留 1.2 秒，6 秒大约轮 5 种，不必把 10 种走完
+const CROP_ANALYSIS_BLINK_MIN_MS = 6000;
+// 识别动画里每种颜色停留的时间
 const CROP_ANALYSIS_SCAN_COLOR_MS = 1200;
+// 动画层建好之后由 startCropAnalysisScan 赋值，startCropAnalysisBlink 等满 1 秒再调用它开跑
+let cropScanStartHook = null;
 const CROP_ANALYSIS_BLINK_CLASS = 'map-identifying'; // 只用于清理旧版标记
 const CROP_ANALYSIS_SCAN_INTERVAL = 80;
 
@@ -96,6 +102,7 @@ const CROP_ANALYSIS_SCAN_INTERVAL = 80;
 const CROP_ANALYSIS_FULL_EXTENT = [72.4875, 42.2583, 85.0006, 49.1297];
 // 离线统计 JSON 的模块级缓存，一次会话只请求一次
 let cropStatsPromise = null;
+let cropTemporalStatsPromise = null;
 
 // 农田页地区下拉框。数据还没接入，先内置几个流域内的地点作为占位，
 // 接数据时用 setParcelRegions 传入，或者放 /static/parcelRegions.json。
@@ -160,6 +167,11 @@ const useMapStore =  defineStore('map',{
             cropYear:CROP_YEARS[0], // 当前查看的年份，和年份时间轴同步
             cropSelectedCodes:[],   // 图例选中的作物编码，空数组表示显示全部
             cropStats:null,         // 离线统计的全流域数字（scripts/cut-stats.cjs 生成）
+            cropTemporalStats:null, // 1009 数据的时序 / 种植分析统计（scripts/temporal-analysis.cjs 生成）
+            cropTab:'visual',       // 二级页签，决定地图上显示哪一层
+            rotationSelected:'',    // 选中的轮作序列，空串表示前十种全显示
+            stabilitySelected:'',   // 选中的稳定性分级 0/1/2，空串表示三级全显示
+            rotationLayer:null,     // 分析图层：作物时间序列看轮作类型，种植分析看稳定性
             imageryInfo:[],
             topoInfo:[], // 地形图信息
             yearPlayer: {},
@@ -507,6 +519,63 @@ const useMapStore =  defineStore('map',{
             this.cropYear = next
             this.reloadCropLayer()
             if(this.isCropBlinkRoute()) this.refreshCropAnalysis(true)
+        },
+
+        // 切二级页签时决定地图显示哪一层：
+        //   作物类型可视化 -> 逐年作物分类（作物类型图层）
+        //   作物时间序列   -> 轮作类型（1009 数据发布的图层）
+        //   种植分析       -> 不显示分类图层，只看底图和流域边界
+        setCropTab:function(tab){
+            this.cropTab = tab
+            if(!this.map) return
+            if(this.cropLayer && this.cropLayer.setVisible) this.cropLayer.setVisible(tab === 'visual')
+            // 作物时间序列和种植分析共用一份发布好的 1009 图层，换的是样式和筛选条件
+            if(tab === 'series' || tab === 'analysis') this.reloadRotationLayer()
+            else this.removeRotationLayer()
+        },
+
+        // 点某个轮作类型只看这一类，再点一次回到前十种全部
+        toggleRotationType:function(sequence){
+            this.rotationSelected = this.rotationSelected === sequence ? '' : sequence
+            if(this.cropTab === 'series') this.reloadRotationLayer()
+        },
+
+        // 点某个稳定性分级只看这一级，再点一次回到三级全显示
+        toggleStabilityClass:function(value){
+            this.stabilitySelected = this.stabilitySelected === value ? '' : value
+            if(this.cropTab === 'analysis') this.reloadRotationLayer()
+        },
+
+        reloadRotationLayer:function(){
+            if(!this.map || !this.map.addLayer) return
+            const isAnalysis = this.cropTab === 'analysis'
+            const params = {
+                LAYERS: CROP_ROTATION_LAYER,
+                VERSION: '1.1.1',
+                TILED: true,
+                STYLES: isAnalysis ? CROP_STABILITY_STYLE : CROP_ROTATION_STYLE
+            }
+            const filter = isAnalysis
+                ? stabilityFilterExpression(this.stabilitySelected)
+                : rotationFilterExpression(this.rotationSelected)
+            if(filter) params.CQL_FILTER = filter
+            const source = new TileWMS({
+                url:`${this.baseUrl}/geoserver/agri-agent/wms`,
+                params,
+                projection:'EPSG:4326',
+                serverType:'geoserver'
+            })
+            const layer = new Tile({ source, className: 'ol-layer rotation-layer' })
+            this.removeRotationLayer()
+            this.rotationLayer = markRaw(layer)
+            this.map.addLayer(layer)
+        },
+
+        removeRotationLayer:function(){
+            if(this.rotationLayer && this.map && this.map.removeLayer){
+                this.map.removeLayer(this.rotationLayer)
+            }
+            this.rotationLayer = null
         },
 
 
@@ -2289,25 +2358,29 @@ const useMapStore =  defineStore('map',{
                     }),
                     layer.on('postrender',event=>{if(saved.has(event.context)){event.context.restore();saved.delete(event.context)}})
                 ])
+                // 先挂上但不显示：等 1 秒的"渲染图层中"走完，再由 startCropAnalysisBlink 放出来
+                layer.setVisible(false)
                 this.cropScanLayer = markRaw(layer)
-                // 原作物图层保持可见：只有框内的地块参与换色动画，
-                // 框外仍显示原来的分类色（被选区遮罩压暗）
                 this.cropScanTargetLayer = null
                 this.cropScanOriginalVisible = null
                 this.map.addLayer(layer)
-                this.cropAnalysisBlinkStartedAt = Date.now()
-                this.cropScanPhase = 'running'
-                this.cropScanProgress = 0
-                this.cropScanTimer = setInterval(()=>{
-                    if(reqId !== this.cropScanReqId) return
-                    elapsed = Date.now()-this.cropAnalysisBlinkStartedAt
-                    this.cropScanProgress = Math.min(100,elapsed/CROP_ANALYSIS_BLINK_MIN_MS*100)
-                    layer.changed()
-                    if(elapsed >= CROP_ANALYSIS_BLINK_MIN_MS){
-                        this.cropScanPhase = 'done'
-                        this.stopCropAnalysisBlink()
-                    }
-                },CROP_ANALYSIS_SCAN_INTERVAL)
+                cropScanStartHook = () => {
+                    if(reqId !== this.cropScanReqId || !this.cropScanLayer) return
+                    layer.setVisible(true)
+                    this.cropAnalysisBlinkStartedAt = Date.now()
+                    this.cropScanPhase = 'running'
+                    this.cropScanProgress = 0
+                    this.cropScanTimer = setInterval(()=>{
+                        if(reqId !== this.cropScanReqId) return
+                        elapsed = Date.now()-this.cropAnalysisBlinkStartedAt
+                        this.cropScanProgress = Math.min(100,elapsed/CROP_ANALYSIS_BLINK_MIN_MS*100)
+                        layer.changed()
+                        if(elapsed >= CROP_ANALYSIS_BLINK_MIN_MS){
+                            this.cropScanPhase = 'done'
+                            this.stopCropAnalysisBlink()
+                        }
+                    },CROP_ANALYSIS_SCAN_INTERVAL)
+                }
                 return true
             }catch(error){
                 if(reqId === this.cropScanReqId) console.warn('作物识别动画加载失败',error)
@@ -2317,6 +2390,7 @@ const useMapStore =  defineStore('map',{
 
         stopCropAnalysisScan:function(){
             this.cropScanReqId++
+            cropScanStartHook = null
             this.cropScanAbort?.abort()
             this.cropScanAbort = null
             this.cropScanData = null
@@ -2344,6 +2418,8 @@ const useMapStore =  defineStore('map',{
                 this.cropAnalysisBlinkMaxTimer = null
             }
             this.stopCropAnalysisScan()
+            // 识别期间作物图层是收起来的，任何退出路径都要把它还回来
+            this.restoreCropLayerAfterScan()
             // 扫描层成功挂上时会把 container 置空，这里用地图容器兜底，
             // 保证标记类一定被摘掉，不留下一直在变的颜色
             const target = this.cropAnalysisBlinkContainer || this.getMapTargetElement()
@@ -2355,24 +2431,44 @@ const useMapStore =  defineStore('map',{
             if(this.cropScanPhase !== 'done') this.cropScanPhase = 'idle'
         },
 
-        // 加载扫描数据；数据不可用时保留原作物图层，不添加滤镜。
+        // 识别结束 / 取数失败时还原作物图层（框选时依然只显示框内）
+        restoreCropLayerAfterScan:function(){
+            if(this.cropLayer && this.cropLayer.setVisible){
+                this.cropLayer.setVisible(this.cropTab === 'visual')
+            }
+        },
+
+        // 框选后的两段式识别：
+        //   第 1 秒 —— 框内收掉作物图层，只留底图，进度条显示"渲染图层中"
+        //   之后   —— 框内逐块在十种作物色之间换色，持续至少 6 秒
         startCropAnalysisBlink:async function(extent){
             this.clearCropAnalysisBlink()
             if(!this.cropLayer) return
-            this.cropScanPhase = 'loading'
+            this.cropScanPhase = 'preparing'
             this.cropScanProgress = 0
-            this.cropAnalysisBlinkStartedAt = Date.now()
+            // 框内先什么图层都不显示
+            if(this.cropLayer.setVisible) this.cropLayer.setVisible(false)
+            const prepareStartedAt = Date.now()
             const pending = this.startCropAnalysisScan(extent)
             const scanRequest = this.cropScanReqId
             const ready = await pending
             if(scanRequest !== this.cropScanReqId) return
-            if(!ready && this.cropScanPhase === 'loading'){
-                this.cropAnalysisBlinkStartedAt = 0
-                this.cropScanPhase = 'idle'
+            if(!ready){
+                // 取不到数据就把图层还回去，不要停在空白底图上
+                if(this.cropScanPhase === 'preparing'){
+                    this.restoreCropLayerAfterScan()
+                    this.cropScanPhase = 'idle'
+                }
+                return
             }
+            // 取数常常不到 1 秒，这里补足空白展示的时间再开始换色
+            const wait = CROP_ANALYSIS_PREPARE_MS - (Date.now() - prepareStartedAt)
+            if(wait > 0) await new Promise(resolve => setTimeout(resolve, wait))
+            if(scanRequest !== this.cropScanReqId) return
+            if(typeof cropScanStartHook === 'function') cropScanStartHook()
         },
 
-        // 统计提前返回时仍等待扫描动画满12秒，随后恢复原作物图层。
+        // 统计提前返回时仍等换色动画跑满，随后恢复原作物图层。
         stopCropAnalysisBlink:function(){
             const elapsed = this.cropAnalysisBlinkStartedAt
                 ? Date.now() - this.cropAnalysisBlinkStartedAt
@@ -2408,9 +2504,11 @@ const useMapStore =  defineStore('map',{
                 this.cropAnalysisLoading = true
                 const statsReqId = ++this.cropAnalysisReqId
                 try{
-                    const stats = await this.getCropStats()
+                    const [stats, temporal] = await Promise.all([
+                        this.getCropStats(), this.getCropTemporalStats()
+                    ])
                     if(statsReqId !== this.cropAnalysisReqId) return
-                    const result = stats ? this.cropAnalysisFromStats(stats, this.cropYear) : null
+                    const result = stats ? this.cropAnalysisFromStats(stats, this.cropYear, temporal) : null
                     if(result){
                         this.cropAnalysisFullResult = result
                         this.cropAnalysisYearsLoaded = CROP_YEARS.slice()
@@ -2557,8 +2655,25 @@ const useMapStore =  defineStore('map',{
             return this.cropStats
         },
 
-        // 把离线统计按当前年份拼成面板要的结构，字段和 computeCropAnalysis 对齐
-        cropAnalysisFromStats:function(stats, year){
+        // 取 1009 数据算出来的时序 / 种植分析统计（轮作序列、跨年改变次数、多样性）
+        getCropTemporalStats:async function(){
+            if(this.cropTemporalStats) return this.cropTemporalStats
+            if(!cropTemporalStatsPromise){
+                cropTemporalStatsPromise = axios.get(CROP_TEMPORAL_STATS_URL)
+                    .then(res => res.data)
+                    .catch(e => {
+                        console.warn('时序分析统计 JSON 读取失败：', e && (e.message || e))
+                        cropTemporalStatsPromise = null
+                        return null
+                    })
+            }
+            this.cropTemporalStats = await cropTemporalStatsPromise
+            return this.cropTemporalStats
+        },
+
+        // 把离线统计按当前年份拼成面板要的结构，字段和 computeCropAnalysis 对齐。
+        // temporal 是 1009 数据算出来的时序统计，稳定性以它的口径为准
+        cropAnalysisFromStats:function(stats, year, temporal){
             const data = stats && stats.years && stats.years[String(year)]
             if(!data) return null
             const byType = data.byType
@@ -2594,9 +2709,19 @@ const useMapStore =  defineStore('map',{
                 series: (stats.series || []).map(item => ({
                     year: item.year, code: item.code, name: item.name, ratio: item.ratio
                 })),
-                stability: stats.stability || {
-                    years: [], parcelCount: 0, averageChanges: null, histogram: {}, comparable: false
-                }
+                // 稳定性用 1009 的口径：相对基准年(2024)发生改变的年数，取值 0 / 1 / 2
+                stability: temporal && temporal.stability
+                    ? {
+                        baseline: temporal.stability.baseline,
+                        years: temporal.stability.years,
+                        parcelCount: temporal.parcelCount,
+                        averageChanges: temporal.stability.averageChanges,
+                        histogram: temporal.stability.changes,
+                        comparable: true
+                    }
+                    : (stats.stability || {
+                        years: [], parcelCount: 0, averageChanges: null, histogram: {}, comparable: false
+                    })
             }
         },
 
@@ -2677,7 +2802,8 @@ const useMapStore =  defineStore('map',{
                 }
             })
 
-            // 种植稳定性：以基准年为起点，统计每个地块作物类型改变的次数
+            // 种植稳定性：和 1009 数据同一口径 —— 统计地块相对基准年(2024)改变的年数，
+            // 取值 0 / 1 / 2。不是相邻两年的变化次数，那两种算法结果不一样。
             const stabilityYears = sortedYears.filter(y => y >= CROP_ANALYSIS_BASELINE_YEAR)
             const parcelYearType = new Map()
             records.forEach(r => {
@@ -2693,12 +2819,14 @@ const useMapStore =  defineStore('map',{
             let changeSum = 0
             const histogram = {}
             parcelYearType.forEach(perYear => {
-                const sequence = stabilityYears.map(y => perYear.get(y)).filter(Boolean).map(v => v.type)
-                if(sequence.length < 2) return
+                const baseline = perYear.get(CROP_ANALYSIS_BASELINE_YEAR)
+                if(!baseline) return
                 let changes = 0
-                for(let i = 1; i < sequence.length; i++){
-                    if(sequence[i] !== sequence[i - 1]) changes += 1
-                }
+                stabilityYears.forEach(year => {
+                    if(year === CROP_ANALYSIS_BASELINE_YEAR) return
+                    const current = perYear.get(year)
+                    if(current && current.type !== baseline.type) changes += 1
+                })
                 stableParcels += 1
                 changeSum += changes
                 histogram[changes] = (histogram[changes] || 0) + 1

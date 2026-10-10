@@ -91,11 +91,16 @@ Write-Host "==> uploading style $StyleName"
 if (-not (Test-Path -LiteralPath $StyleFile)) { throw "SLD not found: $StyleFile" }
 $sld = Get-Content -LiteralPath $StyleFile -Raw -Encoding UTF8
 $styleBody = [Text.Encoding]::UTF8.GetBytes($sld)
-$styleExists = Invoke-Rest -Method Get -Uri "$rest/workspaces/$Workspace/styles/$StyleName" -ContentType 'application/json' -AllowMissing
-if ($styleExists) {
+# Update when the style already exists. GeoServer answers 500 for a GET on an
+# existing style, so skip the existence probe: fall back to POST when PUT fails.
+try {
     Invoke-Rest -Method Put -Uri "$rest/workspaces/$Workspace/styles/$StyleName" `
         -ContentType 'application/vnd.ogc.sld+xml; charset=UTF-8' -Body $styleBody | Out-Null
-} else {
+    $styleDone = $true
+} catch {
+    $styleDone = $false
+}
+if (-not $styleDone) {
     Invoke-Rest -Method Post -Uri "$rest/workspaces/$Workspace/styles?name=$StyleName" `
         -ContentType 'application/vnd.ogc.sld+xml; charset=UTF-8' -Body $styleBody | Out-Null
 }

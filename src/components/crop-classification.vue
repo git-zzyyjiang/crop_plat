@@ -4,8 +4,8 @@
     <module-tabs v-model="tab" :tabs="tabs" :active-id="roiActive ? 'identify' : ''"/>
 
     <crops-type v-if="tab === 'visual'"/>
-    <!-- 这版数据是逐年的，时间轴只选年份；农田页仍然用按天的时间轴 -->
-    <crop-year-timeline v-if="tab === 'visual' || tab === 'analysis'"/>
+    <!-- 年份时间轴只属于「作物类型可视化」；种植分析看的是三年汇总，不需要切年份 -->
+    <crop-year-timeline v-if="tab === 'visual'"/>
     <crop-analysis-panel v-if="tab === 'visual' || tab === 'analysis'" :tab="panelTab" hide-tabs/>
     <rotation-type v-if="tab === 'series'"/>
     <!-- 种植分析的稳定性图例，照原型放在右下 -->
@@ -13,7 +13,9 @@
       v-if="tab === 'analysis'"
       title="种植稳定性"
       :items="stabilityLegend"
-      note="数据待接入：按地块统计 2024—2026 作物类型改变次数。"
+      :active-value="stabilitySelected"
+      note="按地块统计 2024—2026 相对基准年 2024 发生改变的年数。点击某一级可只看该类分布。"
+      @select="item => store.toggleStabilityClass(item.value)"
     />
     <!-- 框选后的识别进度条，刚好在统计完成时走满 -->
     <scan-progress/>
@@ -35,7 +37,7 @@ import ScanProgress from '@/components/part/scan-progress.vue'
 import PiIcon from '@/components/part/pi-icon.vue'
 
 const store = useMapStore()
-const { map, parcelRoiState } = storeToRefs(store)
+const { map, parcelRoiState, stabilitySelected } = storeToRefs(store)
 
 // 二级模块，名称与 figma 原型一致。
 // 「交互识别」本身就是框选开关，框选开着的时候按钮文案变成「停止框选」
@@ -66,13 +68,15 @@ watch(tab, value => {
   if (value !== 'visual' && (parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied')) {
     store.clearParcelRoi()
   }
+  // 作物类型可视化看逐年分类，作物时间序列看轮作类型，种植分析两层都不挂
+  store.setCropTab(value)
 })
 
 // 原型里的稳定性分级图例
 const stabilityLegend = [
-  { label: '0 次（稳定）', color: '#58c98a' },
-  { label: '1 — 2 次', color: '#f2c14e' },
-  { label: '3 次及以上', color: '#e2574c' }
+  { value: 0, label: '0 次（三年不变）', color: '#58c98a' },
+  { value: 1, label: '1 次', color: '#f2c14e' },
+  { value: 2, label: '2 次（每年都变）', color: '#e2574c' }
 ]
 
 const setMapView = () => {
@@ -95,12 +99,15 @@ const setMapView = () => {
   // clearMap 会把子组件（crops-type）刚挂上的作物图层一起清掉，
   // 所以视图初始化完再补一次加载；addCropLayer 内部会先移除旧层，不会重复。
   store.reloadCropLayer()
+  // 从别的页面回来时，store 里的页签可能还停在上一状态，这里同步一次
+  store.setCropTab(tab.value)
 }
 
 onMounted(setMapView)
 onBeforeUnmount(() => {
   store.cancelCropAnalysisRequest()
   store.clearCropAnalysisBlink()
+  store.removeRotationLayer()
 })
 </script>
 

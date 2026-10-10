@@ -5,9 +5,16 @@
       <span class="lc-title">{{ title }}</span>
     </header>
     <ul class="lc-list">
-      <li v-for="item in items" :key="item.label">
+      <li
+        v-for="item in items"
+        :key="item.label"
+        class="lc-item"
+        :class="{ clicked: isActive(item) }"
+        :title="hasSelection ? (isActive(item) ? '再次点击显示全部' : '只看这一类') : '点击只看这一类'"
+        @click="$emit('select', item)"
+      >
         <span class="lc-swatch" :style="{ backgroundColor: item.color }"></span>
-        <span>{{ item.label }}</span>
+        <span class="lc-label">{{ item.label }}</span>
       </li>
     </ul>
     <p v-if="note" class="lc-note">{{ note }}</p>
@@ -15,15 +22,24 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { usePanelDrag } from '@/composables/usePanelDrag'
 
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
   items: { type: Array, default: () => [] },
-  note: { type: String, default: '' }
+  note: { type: String, default: '' },
+  // 当前选中的值，空表示全部高亮；和 item.value 比对
+  activeValue: { type: [String, Number], default: '' }
 })
 
+defineEmits(['select'])
+
 const { panel, panelStyle, startDrag } = usePanelDrag()
+
+const hasSelection = computed(() =>
+  props.activeValue !== '' && props.activeValue !== null && props.activeValue !== undefined)
+const isActive = item => !hasSelection.value || String(item.value) === String(props.activeValue)
 </script>
 
 <style scoped>
@@ -87,6 +103,18 @@ const { panel, panelStyle, startDrag } = usePanelDrag()
   flex: 0 0 auto;
   border-radius: 3px;
   border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.lc-item {
+  cursor: pointer;
+}
+
+.lc-item:not(.clicked) .lc-swatch {
+  opacity: .3;
+}
+
+.lc-item:not(.clicked) .lc-label {
+  color: #b3bfcd;
 }
 
 .lc-note {

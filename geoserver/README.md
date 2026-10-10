@@ -88,3 +88,31 @@ node scripts\cut-stats.cjs "C:\Users\27814\Desktop\cut"
 注意：脚本按**行号**把三年当成同一条地块做跨年比较（当前这套数据的三个 `.shp`
 SHA256 完全一致，只有属性不同）。如果新数据三年边界不一致，先确认这一点，
 否则时间序列和种植稳定性会算错。
+
+另外，「作物时间序列」的轮作类型和「种植分析」的稳定性 / 多样性用的是分析方给的
+另一份数据（`1009/parcel_temporal_analysis`），换了它就要重跑：
+
+```powershell
+node scripts\temporal-analysis.cjs "C:\Users\27814\Desktop\1009"
+```
+
+生成 `public/static/parcelTemporalStats.json`：轮作序列的种类与占比、相对基准年
+2024 改变 0 / 1 / 2 次的地块数、三年出现过的作物种类分布。种植稳定性的口径就是
+这份数据里的 `CHG_BASE`（相对基准年改变的年数），不是相邻两年的变化次数，
+两种算法结果不一样，改代码时别混用。
+
+同一份数据还要发布成地图图层（作物时间序列 / 种植分析两个页签的地图数据）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\geoserver\publish-rotation.ps1
+```
+
+发布 `agri-agent:bh_crop_rotation`，并挂两套样式：
+
+| 样式 | 用在哪 | 依据字段 |
+| --- | --- | --- |
+| `crop-rotation-10` | 作物时间序列 | `SEQUENCE`，只画地块数前十种，其余透明 |
+| `crop-stability-3` | 种植分析 | `CHG_BASE`，分 0 / 1 / 2 三级 |
+
+前端不依赖图层的默认样式，而是在 WMS 请求里按页签指定 `STYLES`，点图例时再加
+`CQL_FILTER` 只看某一类。

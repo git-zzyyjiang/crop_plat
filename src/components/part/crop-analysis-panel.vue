@@ -29,7 +29,9 @@
       <!-- 交互识别与作物类型可视化是一体的，框选入口由页面塞进来 -->
       <slot name="actions"/>
       <p class="ca-hint" v-if="recognizing || cropAnalysisLoading">
-        {{ recognizing ? '正在识别，完成后显示统计信息…' : cropAnalysisScope === 'roi' ? '正在统计…' : '正在统计整个流域，首次加载后将缓存结果…' }}
+        {{ recognizing
+          ? (cropScanPhase === 'preparing' ? '渲染图层中…' : '正在识别，完成后显示统计信息…')
+          : cropAnalysisScope === 'roi' ? '正在统计…' : '正在统计整个流域，首次加载后将缓存结果…' }}
       </p>
       <p class="ca-hint" v-else-if="!result">{{ cropAnalysisNotice || '正在准备数据…' }}</p>
 
@@ -186,7 +188,7 @@ watch(() => props.tab, value => {
   if (value && tabs.some(item => item.id === value)) activeTab.value = value
 }, { immediate: true })
 
-const recognizing = computed(() => !!parcelRoiExtent.value && ['loading','running'].includes(cropScanPhase.value))
+const recognizing = computed(() => !!parcelRoiExtent.value && ['preparing','loading','running'].includes(cropScanPhase.value))
 const result = computed(() => cropAnalysisResult.value)
 
 // 标题跟着二级模块走，与原型一致
