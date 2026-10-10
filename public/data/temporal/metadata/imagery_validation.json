@@ -1,0 +1,367 @@
+{
+  "date": "2026-10-06",
+  "passed": true,
+  "tests": [
+    {
+      "layer": "S1_2024",
+      "longitude": 68.5,
+      "latitude": 40.5,
+      "tile": [
+        9,
+        353,
+        192
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/9/353/192.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2024",
+      "longitude": 78,
+      "latitude": 45,
+      "tile": [
+        9,
+        366,
+        184
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/9/366/184.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2024",
+      "longitude": 87.5,
+      "latitude": 49.5,
+      "tile": [
+        9,
+        380,
+        174
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/9/380/174.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2025",
+      "longitude": 68.5,
+      "latitude": 40.5,
+      "tile": [
+        9,
+        353,
+        192
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/2b992ebd5eaca7b7de6e69b4a4bcf408/tiles/WebMercatorQuad/9/353/192.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2025",
+      "longitude": 78,
+      "latitude": 45,
+      "tile": [
+        9,
+        366,
+        184
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/2b992ebd5eaca7b7de6e69b4a4bcf408/tiles/WebMercatorQuad/9/366/184.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2025",
+      "longitude": 87.5,
+      "latitude": 49.5,
+      "tile": [
+        9,
+        380,
+        174
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/2b992ebd5eaca7b7de6e69b4a4bcf408/tiles/WebMercatorQuad/9/380/174.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2026",
+      "longitude": 68.5,
+      "latitude": 40.5,
+      "tile": [
+        9,
+        353,
+        192
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tiles/WebMercatorQuad/9/353/192.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2026",
+      "longitude": 78,
+      "latitude": 45,
+      "tile": [
+        9,
+        366,
+        184
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tiles/WebMercatorQuad/9/366/184.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S1_2026",
+      "longitude": 87.5,
+      "latitude": 49.5,
+      "tile": [
+        9,
+        380,
+        174
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tiles/WebMercatorQuad/9/380/174.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2024",
+      "longitude": 68.5,
+      "latitude": 40.5,
+      "tile": [
+        9,
+        353,
+        192
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/tiles/WebMercatorQuad/9/353/192.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2024",
+      "longitude": 78,
+      "latitude": 45,
+      "tile": [
+        9,
+        366,
+        184
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/tiles/WebMercatorQuad/9/366/184.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2024",
+      "longitude": 87.5,
+      "latitude": 49.5,
+      "tile": [
+        9,
+        380,
+        174
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/tiles/WebMercatorQuad/9/380/174.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2025",
+      "longitude": 68.5,
+      "latitude": 40.5,
+      "tile": [
+        9,
+        353,
+        192
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/9/353/192.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2025",
+      "longitude": 78,
+      "latitude": 45,
+      "tile": [
+        9,
+        366,
+        184
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/9/366/184.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2025",
+      "longitude": 87.5,
+      "latitude": 49.5,
+      "tile": [
+        9,
+        380,
+        174
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/9/380/174.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2026",
+      "longitude": 68.5,
+      "latitude": 40.5,
+      "tile": [
+        9,
+        353,
+        192
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/tiles/WebMercatorQuad/9/353/192.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2026",
+      "longitude": 78,
+      "latitude": 45,
+      "tile": [
+        9,
+        366,
+        184
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/tiles/WebMercatorQuad/9/366/184.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "layer": "S2_2026",
+      "longitude": 87.5,
+      "latitude": 49.5,
+      "tile": [
+        9,
+        380,
+        174
+      ],
+      "status": 200,
+      "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/tiles/WebMercatorQuad/9/380/174.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "dimensions": [
+        256,
+        256
+      ]
+    }
+  ],
+  "note": "Tests sample west/central/east parts; not exhaustive coverage validation"
+}

@@ -1,0 +1,53 @@
+{
+  "file": "03_terrain/elevation_m.tif",
+  "type": "raster",
+  "crs": "EPSG:4326",
+  "bounds": [
+    68.0,
+    40.0,
+    88.0,
+    50.0
+  ],
+  "width": 4000,
+  "height": 2000,
+  "resolution_degrees": [
+    0.005,
+    0.005
+  ],
+  "minimum": -693.3900146484375,
+  "maximum": 7181.42041015625,
+  "valid_pixels": 8000000,
+  "nodata": -9999.0,
+  "palette": {
+    "stops": [
+      0,
+      500,
+      1000,
+      2000,
+      3500,
+      5000
+    ],
+    "colors": [
+      "#205b35",
+      "#72a34d",
+      "#d6c785",
+      "#a17a55",
+      "#dddddd",
+      "#ffffff"
+    ]
+  },
+  "web_preview": "03_terrain/elevation_m_web3857.png",
+  "web_preview_crs": "EPSG:3857",
+  "web_preview_bounds_wgs84": [
+    68.0,
+    39.99727284181007,
+    88.00101294902706,
+    49.99999999999999
+  ],
+  "web_preview_size": [
+    2048,
+    1454
+  ],
+  "units": "m",
+  "source": "Mapzen Terrain Tiles z8"
+}

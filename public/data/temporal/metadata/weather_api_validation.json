@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-06",
+  "tests": [
+    {
+      "latitude": 40,
+      "longitude": 68,
+      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=40&longitude=68&start_date=2024-01-01&end_date=2024-01-07&daily=temperature_2m_mean%2Cprecipitation_sum&models=era5&elevation=nan&cell_selection=nearest&timezone=GMT",
+      "temperature_maximum_difference": 0.04375000000000018,
+      "precipitation_maximum_difference": 5.722045894884786e-07
+    },
+    {
+      "latitude": 45,
+      "longitude": 78,
+      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=45&longitude=78&start_date=2024-01-01&end_date=2024-01-07&daily=temperature_2m_mean%2Cprecipitation_sum&models=era5&elevation=nan&cell_selection=nearest&timezone=GMT",
+      "temperature_maximum_difference": 0.04791667461395255,
+      "precipitation_maximum_difference": 2.861022947442393e-07
+    },
+    {
+      "latitude": 50,
+      "longitude": 88,
+      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=50&longitude=88&start_date=2024-01-01&end_date=2024-01-07&daily=temperature_2m_mean%2Cprecipitation_sum&models=era5&elevation=nan&cell_selection=nearest&timezone=GMT",
+      "temperature_maximum_difference": 0.04583435058593821,
+      "precipitation_maximum_difference": 4.768371586472142e-08
+    }
+  ],
+  "passed": true,
+  "tolerance": 0.16,
+  "note": "API rounds temperature and precipitation; no elevation downscaling applied"
+}

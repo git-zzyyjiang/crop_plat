@@ -1,0 +1,22 @@
+{
+  "tilejson": "2.2.0",
+  "name": "fb4a84c60779b06fb056ab938cadcf50",
+  "version": "1.0.0",
+  "scheme": "xyz",
+  "tiles": [
+    "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray"
+  ],
+  "minzoom": 6,
+  "maxzoom": 14,
+  "bounds": [
+    68.0,
+    40.0,
+    88.0,
+    50.0
+  ],
+  "center": [
+    78.0,
+    45.0,
+    6
+  ]
+}

@@ -1,0 +1,748 @@
+body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    position: relative;;
+}
+
+#mapView {
+    /* 顶部留出顶栏（+ 二级导航条）的高度，其余空间都给地图 */
+    height: calc(100% - var(--header-h));
+    width: 100%;
+    position:absolute;
+    top: var(--header-h);
+}
+
+/* 有二级导航条的页面，地图再往下让出 --tabs-h */
+html.with-module-tabs #mapView {
+    top: calc(var(--header-h) + var(--tabs-h));
+    height: calc(100% - var(--header-h) - var(--tabs-h));
+}
+
+#bottom {
+
+    width: 100%;
+    height: 25%;
+    position: absolute;
+    bottom: 0;
+    /*border-style: solid;*/
+
+    /* 各页面的内容都改成浮层了，这条只作为底部浮层的定位容器：
+       不再画背景，也不再拦截鼠标，地图可以铺到最下面 */
+    background: none;
+    pointer-events: none;
+
+}
+
+#bottom_left {
+    width: 40%;
+    height: 100%;
+    position:absolute;
+    left:0;
+    top:0;
+    /*display: flex;*/
+    /*justify-content: space-around;*/
+    /*float: left;*/
+    /*display: flex;*/
+    /*display: flex;*/
+    /*justify-content:space-around;*/
+    color: rgb(191, 238, 255);
+    box-sizing: border-box;
+    border-style: none;
+
+}
+#bottom_right {
+    width: 60%;
+    height: 100%;
+    /*float: right;*/
+    position:absolute;
+    right:0;
+    top:0;
+    box-sizing: border-box;
+    border-left: 0;
+    border-style: none;
+    color: rgb(191, 238, 255);
+    pointer-events: none;
+}
+
+/* 容器本身透传鼠标，里面的浮层照常可点 */
+#bottom_right > * {
+    pointer-events: auto;
+}
+#landType{
+    position:absolute;
+    top:0;
+    left:50%;
+    transform: translateX(-50%);
+    height: 100%;
+    width: 80%;
+    border-style: solid;
+    box-sizing: border-box;
+    border-top: 0;
+    border-left: 0;
+    border-bottom: 0;
+    border-right: 0;
+}
+
+#timeSlider {
+    /*float: right;*/
+    position:absolute;
+    top:0;
+    left:50%;
+    transform: translateX(-50%);
+    height: 100%;
+    width: 80%;
+    border-style: none;
+    box-sizing: border-box;
+    color: rgb(191, 238, 255);
+    border-top: 0;
+    border-left: 0;
+    border-bottom: 0;
+}
+.p1{
+    height:15%;
+    text-align: center;
+
+}
+.p2{
+    bottom:0;
+    width: 100%;
+    /*background-color: red;*/
+    height: 85%
+}
+.button {
+    /*overflow: hidden;*/
+    /*text-overflow: ellipsis;*/
+    /*white-space: nowrap;*/
+    /*margin-bottom: 20px;*/
+    /*margin-left: 14%;*/
+    /*margin-top:30px ;*/
+
+    cursor: pointer;
+    width: 20%;
+    height: 100%;
+    font-size: larger;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+    color: rgb(191, 238, 255);
+    background-color: rgb(0, 35, 47);
+    border-color: rgb(191, 238, 255);
+}
+
+#button1 {
+    top: 10px;
+}
+
+#button2 {
+    top: 130px;
+}
+
+.button.active {
+    background-color: rgb(191, 238, 255);
+    color: rgb(0, 35, 47);
+}
+
+
+
+#landCover {
+    float: left;
+    width: 100%;
+    height: 100%;
+
+}
+
+
+
+.span {
+    position: relative;
+    top: 25%;
+    font-size: small;
+    color: rgb(191, 238, 255);;
+}
+
+#landUse {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+.landUse_p1{
+    position: relative;
+    width: 100%;
+    height: 15%;
+    text-align: center;
+}
+.landUse_p2 {
+    position: relative;
+    margin-left: 50px;
+}
+
+#landCoverTotals {
+    position: absolute;
+    right: 10px;
+    left: 60%;
+    bottom: 0;
+    top: 0;
+
+}
+
+.flex {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.round {
+    height: 1rem;
+    width: 1rem;
+    border-width: 2px;
+    border-radius: 9999px;
+    --tw-border-opacity: 1;
+    border-color: rgb(255 255 255/var(--tw-border-opacity));
+}
+
+
+.timeline_year {
+    position: relative;
+    left: 13%;
+    width: 68%;
+    height: 2px;
+    color: rgb(191, 238, 255);
+    top: 3%;
+}
+
+.timeline_month {
+    position: relative;
+    left: 11%;
+    width: 79%;
+    height: 5px;
+    color: rgb(191, 238, 255);
+    bottom: -8%;
+}
+
+
+
+.year, .month {
+    position: absolute;
+    bottom: -20px;
+    transform: translateX(-50%);
+    font-size: 20px;
+    transition: color 0.2s;
+}
+
+.year.active {
+    color: darksalmon;
+}
+
+.month.active {
+    color: darksalmon;
+}
+
+/* 要素按钮组的图标样式 */
+.legend-container {
+    margin-top: 8%;
+    margin-left: 8%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 30px;
+    justify-content: space-around;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+}
+
+.legend-color {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 5px;
+    transition: opacity 0.3s ease; /* 添加渐变过渡效果 */
+    border: 2px solid white; /* 添加白色边框 */
+}
+
+.legend-item.clicked .legend-color {
+    opacity: 1; /* 点击后的按钮颜色保持不变 */
+    box-shadow: 0 0 5px white; /* 添加选中后的白色特效 */
+}
+
+.legend-item:not(.clicked) .legend-color {
+    opacity: 0.5; /* 未点击的按钮颜色变淡 */
+}
+
+/* 添加选中特效 */
+.legend-item:active .legend-color {
+    /*transform: scale(1.2);*/
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+
+
+.hidden {
+    display: none;
+}
+
+.button-container {
+    margin-top: 5%;
+    margin-left: 8%;
+    width: 80%;
+    display: grid;
+    grid-template-columns:  1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 30px;
+}
+
+.button-item {
+    display: flex;
+    align-items: center;
+    font-size: small;
+
+}
+
+.button-color {
+    width: 80px;
+    height: 40px;
+    margin-right: 5px;
+
+}
+
+.button-item.clicked .button-color {
+    opacity: 1; /* 点击后的按钮颜色保持不变 */
+    box-shadow: 0 0 5px white; /* 添加选中后的白色特效 */
+}
+
+.button-item:not(.clicked) .button-color {
+    opacity: 0.5; /* 未点击的按钮颜色变淡 */
+}
+
+
+.button-item:active .button-color {
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+
+#year-slider,#month-slider {
+    position: relative;
+    width: 54%;
+    top: 15%;
+    left: 20%;
+    appearance: none; /* 去除默认样式 */
+    background: linear-gradient(to right, #ccc, #ccc) no-repeat; /* 设置背景颜色 */
+    border: none; /* 去除边框 */
+    height: 4px; /* 设置滑动条高度 */
+    outline: none; /* 去除选中时的外边框 */
+    margin-bottom: 10px; /* 应用于此示例的其他样式 */
+}
+
+/* 自定义滑块样式 */
+#year-slider::-webkit-slider-thumb {
+    appearance: none; /* 去除默认样式 */
+    width: 16px; /* 设置滑块宽度 */
+    height: 16px; /* 设置滑块高度 */
+    background-color: rgb(191, 238, 255); /* 设置滑块颜色 */
+    border-radius: 50%; /* 设置滑块为圆形 */
+    cursor: pointer; /* 设置光标为手型 */
+}
+#month-slider::-webkit-slider-thumb {
+    appearance: none; /* 去除默认样式 */
+    width: 16px; /* 设置滑块宽度 */
+    height: 16px; /* 设置滑块高度 */
+    background-color: rgb(191, 238, 255); /* 设置滑块颜色 */
+    border-radius: 50%; /* 设置滑块为圆形 */
+    cursor: pointer; /* 设置光标为手型 */
+}
+
+/* 样式化选定的年份显示 */
+
+#play-year-pause-button {
+    position: absolute;
+    top:20%;
+    right: 20%;
+    background-color: rgb(191, 238, 255);
+    border-radius: 10%;
+}
+#play-month-pause-button {
+    position: absolute;
+    bottom:60%;
+    right: 9%;
+    background-color: rgb(191, 238, 255);
+    border-radius: 10%;
+}
+
+/* ==========================================================================
+   平台外壳（照 figma 原型：深蓝顶栏 + 白色二级导航条 + 地图浮层控件）
+   颜色与尺寸取自原型的计算样式
+   ========================================================================== */
+
+:root {
+    --header-h: 64px;
+    --tabs-h: 54px;
+    --brand-900: #063375;
+    --brand-700: #075fc4;
+    --brand-500: #156ee4;
+    --brand-400: #2c93ff;
+    --brand-300: #56d5ff;
+    --ink-900: #102b56;
+    --ink-700: #123e7d;
+    --ink-500: #164f9a;
+    --ink-300: #7890aa;
+    --panel-bg: rgba(255, 255, 255, 0.97);
+    --panel-radius: 10px;
+    --panel-shadow: 0 6px 20px rgba(6, 34, 84, 0.18);
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1200;
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    padding: 0 18px 0 24px;
+    box-sizing: border-box;
+    color: #fff;
+    background-image: linear-gradient(105deg, #063375 0%, #075fc4 55%, #0a7ae0 100%);
+    box-shadow: 0 2px 8px rgba(0, 26, 63, 0.3);
+    pointer-events: auto;
+}
+
+.topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.topbar-logo {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    color: #7ddcff;
+}
+
+.topbar-title {
+    margin: 0;
+    overflow: hidden;
+    color: #fff;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.topbar-menu {
+    display: flex;
+    align-items: stretch;
+    align-self: stretch;
+    margin: 0 auto;
+    flex: 0 0 auto;
+}
+
+.topbar-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 116px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.82);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.topbar-item svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+}
+
+.topbar-item:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.topbar-item.active {
+    color: #fff;
+    background-image: linear-gradient(#2c93ff, #156ee4);
+    box-shadow: inset 0 -3px 0 0 var(--brand-300);
+}
+
+.topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    padding-left: 16px;
+    color: #fff;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.topbar-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.topbar-avatar svg {
+    width: 17px;
+    height: 17px;
+}
+
+.topbar-caret {
+    width: 12px;
+    height: 12px;
+    opacity: 0.8;
+}
+
+/* ---------- 二级导航条 ---------- */
+.module-tabs {
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    z-index: 1100;
+    height: var(--tabs-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-sizing: border-box;
+    background-color: #fff;
+    border-bottom: 1px solid #e4ecf7;
+    box-shadow: 0 2px 6px rgba(10, 40, 90, 0.06);
+    pointer-events: auto;
+}
+
+.module-tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 18px;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink-900);
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.module-tab svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+}
+
+.module-tab:hover {
+    background-color: #eef4fd;
+}
+
+.module-tab.active {
+    color: #fff;
+    font-weight: 600;
+    background-image: linear-gradient(#2c93ff, #156ee4);
+    box-shadow: 0 2px 8px rgba(21, 110, 228, 0.35);
+}
+
+/* ---------- 地图浮层控件 ---------- */
+.map-tools {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.map-tool {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-500);
+    background-color: var(--panel-bg);
+    border: 0;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(6, 34, 84, 0.22);
+    cursor: pointer;
+}
+
+.map-tool:hover {
+    color: var(--brand-500);
+}
+
+.map-tool.primary {
+    width: 46px;
+    color: #fff;
+    font-size: 14px;
+    background-image: linear-gradient(#2c93ff, #156ee4);
+    box-shadow: 0 2px 10px rgba(21, 110, 228, 0.45);
+}
+
+.map-tool svg {
+    width: 18px;
+    height: 18px;
+}
+
+.map-compass {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 1000;
+    width: 46px;
+    height: 46px;
+    color: #fff;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    pointer-events: none;
+}
+
+.map-scalebar {
+    position: absolute;
+    right: 14px;
+    bottom: 12px;
+    z-index: 1000;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    color: #fff;
+    font-size: 11px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+}
+
+.map-scalebar-bar {
+    width: 72px;
+    height: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-top: 0;
+}
+
+/* ---------- 底部时间轴小白条 ---------- */
+.bottom-pill {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: min(880px, calc(100vw - 60px));
+    padding: 10px 20px;
+    box-sizing: border-box;
+    color: var(--ink-900);
+    background-color: rgba(255, 255, 255, 0.97);
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(6, 34, 84, 0.22);
+    pointer-events: auto;
+}
+
+/* ---------- 通用浮层面板 ---------- */
+.float-panel {
+    background-color: var(--panel-bg);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
+    color: var(--ink-900);
+}
+
+/* 地图自带的缩放/旋转控件藏掉，改用右侧统一工具条 */
+#mapView .ol-zoom,
+#mapView .ol-rotate,
+#mapView .ol-attribution {
+    display: none !important;
+}
+
+.map-tool.is-on {
+    color: #fff;
+    background-image: linear-gradient(#2c93ff, #156ee4);
+}
+
+/* 交互识别二级模块的小面板（农业地块 / 作物结构共用） */
+.ident-panel {
+    position: fixed;
+    top: calc(var(--header-h) + var(--tabs-h) + 11px);
+    left: 11px;
+    z-index: 1000;
+    width: 256px;
+    pointer-events: auto;
+}
+
+.ident-body {
+    padding: 2px 15px 14px;
+}
+
+.ident-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #fff;
+    background-image: linear-gradient(#2c93ff, #156ee4);
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.ident-btn.on {
+    background-image: linear-gradient(#ffb74d, #f08c1a);
+}
+
+.ident-hint {
+    margin: 10px 0 0;
+    color: var(--ink-300);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+/* 和左侧统计面板同时出现时，框选入口挪到左下角，避免压在一起 */
+.ident-panel--bottom {
+    top: auto;
+    /* 日期时间轴那一条比较高，这里要留够位置 */
+    bottom: 150px;
+    width: 224px;
+}
+
+.panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 45px;
+    padding: 0 12px 0 15px;
+    box-sizing: border-box;
+    color: var(--ink-700);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.panel-heading svg {
+    width: 17px;
+    height: 17px;
+}

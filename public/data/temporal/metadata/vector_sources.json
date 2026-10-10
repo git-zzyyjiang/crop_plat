@@ -1,0 +1,178 @@
+[
+  {
+    "file": "01_basemap/rivers_major.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 4633,
+    "selection_bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "selection_method": "retain entire intersecting reaches with ORD_STRA >= 5; no geometric clipping, no simplification",
+    "bounds": [
+      67.75624999999982,
+      39.71041666666607,
+      88.06041666666616,
+      48.702083333332574
+    ],
+    "source": "https://data.hydrosheds.org/file/HydroRIVERS/HydroRIVERS_v10_as_shp.zip",
+    "source_product": "HydroRIVERS v1.0 Asia",
+    "source_documentation": "https://www.hydrosheds.org/products/hydrorivers",
+    "river_names_available": false,
+    "name_label_layer": "01_basemap/rivers_named.geojson",
+    "filter": {
+      "ORD_STRA": {
+        "gte": 5
+      }
+    },
+    "unfiltered_reaches_in_same_bbox": 68627,
+    "reduction_percent": 93.25,
+    "order_counts": {
+      "5": 2641,
+      "6": 1300,
+      "7": 428,
+      "8": 264
+    },
+    "total_reach_length_km": 18575.21
+  },
+  {
+    "file": "01_basemap/lakes.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 18,
+    "selection_bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "selection_method": "retain entire intersecting features; no geometric clipping",
+    "bounds": [
+      66.11462851184046,
+      40.23203648966586,
+      87.4336560552245,
+      50.054673047922535
+    ],
+    "repaired_geometries": 0,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_lakes.zip"
+  },
+  {
+    "file": "01_basemap/mountain_ranges.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 7,
+    "selection_bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "selection_method": "retain entire intersecting features; no geometric clipping",
+    "bounds": [
+      66.18921959727126,
+      39.6602847351503,
+      100.79053795664626,
+      52.30487702030655
+    ],
+    "repaired_geometries": 0,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_geography_regions_polys.zip"
+  },
+  {
+    "file": "02_boundaries/countries.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 258,
+    "selection_bbox": null,
+    "selection_method": "global complete dataset",
+    "bounds": [
+      -179.99999999999991,
+      -89.99999999999994,
+      180.0,
+      83.63410065300008
+    ],
+    "repaired_geometries": 1,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
+  },
+  {
+    "file": "02_boundaries/country_borders.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 515,
+    "selection_bbox": null,
+    "selection_method": "global complete dataset",
+    "bounds": [
+      -141.00554863899987,
+      -55.120923766999944,
+      145.94101759835863,
+      70.07531036400012
+    ],
+    "repaired_geometries": 0,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_boundary_lines_land.zip"
+  },
+  {
+    "file": "02_boundaries/provinces.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 1799,
+    "selection_bbox": [
+      25,
+      -10,
+      180,
+      85
+    ],
+    "selection_method": "retain entire intersecting features; no geometric clipping",
+    "bounds": [
+      -179.99999999999991,
+      -29.17062224691915,
+      180.0,
+      81.85871002800008
+    ],
+    "repaired_geometries": 0,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_1_states_provinces.zip"
+  },
+  {
+    "file": "02_boundaries/province_borders.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 3860,
+    "selection_bbox": [
+      25,
+      -10,
+      180,
+      85
+    ],
+    "selection_method": "retain entire intersecting features; no geometric clipping",
+    "bounds": [
+      23.158101027040743,
+      -11.501726575421117,
+      174.51237674369168,
+      73.86912669494097
+    ],
+    "repaired_geometries": 0,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_1_states_provinces_lines.zip"
+  },
+  {
+    "file": "01_basemap/rivers_named.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 16,
+    "selection_bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "selection_method": "retain entire intersecting features; no geometric clipping",
+    "bounds": [
+      60.8997640538935,
+      35.52069733280662,
+      90.32529296875003,
+      53.98561432499412
+    ],
+    "repaired_geometries": 0,
+    "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_rivers_lake_centerlines.zip",
+    "role": "auxiliary river-name labels"
+  }
+]

@@ -1,0 +1,80 @@
+{
+  "id": "S2_2025",
+  "sensor": "S2",
+  "year": 2025,
+  "bbox": [
+    68,
+    40,
+    88,
+    50
+  ],
+  "collection": "sentinel-2-l2a",
+  "search_id": "6e614453f033341218d5eedf18e4399e",
+  "search": {
+    "collections": [
+      "sentinel-2-l2a"
+    ],
+    "bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "datetime": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+    "sortby": [
+      {
+        "field": "datetime",
+        "direction": "desc"
+      }
+    ],
+    "query": {
+      "eo:cloud_cover": {
+        "lt": 20
+      }
+    }
+  },
+  "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
+  "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+  "latest_scene_datetime": "2025-12-31T06:11:49.024000Z",
+  "latest_scene_id": "S2B_MSIL2A_20251231T061149_R134_T43TCL_20251231T080226",
+  "temporal_complete": true,
+  "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+  "rendering": {
+    "collection": "sentinel-2-l2a",
+    "assets": [
+      "B04",
+      "B03",
+      "B02"
+    ],
+    "rescale": "0,3000",
+    "nodata": 0
+  },
+  "test": {
+    "http_status": 200,
+    "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+    "cors": "*",
+    "image_size": [
+      256,
+      256
+    ],
+    "extrema": [
+      [
+        0,
+        255
+      ],
+      [
+        0,
+        255
+      ],
+      [
+        0,
+        255
+      ],
+      [
+        255,
+        255
+      ]
+    ]
+  },
+  "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+}

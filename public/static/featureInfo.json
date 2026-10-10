@@ -1,0 +1,11 @@
+[
+  {"index":0,"name":"水域","style":"background-color:blue"},
+  {"index":1,"name":"树木","style":"background-color:green"},
+  {"index":2,"name":"草地","style":"background-color: rgb(135, 209, 158)"},
+  {"index":3,"name":"农作物","style":"background-color:rgb(255, 219, 22)"},
+  {"index":4,"name":"建筑区","style":"background-color:red"},
+  {"index":5,"name":"裸地","style":"background-color:rgb(237,233,228)"},
+  {"index":6,"name":"雪/冰","style":"background-color:white"},
+  {"index":7,"name":"云层","style":"background-color:rgb(200,200,200)"},
+  {"index":8,"name":"牧场","style":"background-color:rgb(239,207,168)"}
+]

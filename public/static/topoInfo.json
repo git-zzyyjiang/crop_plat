@@ -1,0 +1,26 @@
+﻿[
+  {
+    "index": 0,
+    "name": "山脉",
+    "color": "#8B7355",
+    "description": "mountain_range"
+  },
+  {
+    "index": 1,
+    "name": "河流",
+    "color": "#4A90E2",
+    "description": "river"
+  },
+  {
+    "index": 2,
+    "name": "湖泊",
+    "color": "#2E5C8A",
+    "description": "lake"
+  },
+  {
+    "index": 3,
+    "name": "农田",
+    "color": "#90EE90",
+    "description": "farmland"
+  }
+]

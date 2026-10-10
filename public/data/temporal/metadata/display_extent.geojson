@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              88.0,
+              40.0
+            ],
+            [
+              88.0,
+              50.0
+            ],
+            [
+              68.0,
+              50.0
+            ],
+            [
+              68.0,
+              40.0
+            ],
+            [
+              88.0,
+              40.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "is_basin_boundary": false,
+        "role": "display_reference_extent"
+      }
+    }
+  ]
+}

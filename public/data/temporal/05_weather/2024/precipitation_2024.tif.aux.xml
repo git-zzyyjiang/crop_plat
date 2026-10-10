@@ -1,0 +1,37 @@
+<PAMDataset>
+  <Metadata>
+    <MDI key="aggregation">sum over all available UTC days</MDI>
+    <MDI key="days">366</MDI>
+    <MDI key="downscaling">none</MDI>
+    <MDI key="native_resolution_degrees">0.25</MDI>
+    <MDI key="period_end">2024-12-31</MDI>
+    <MDI key="period_start">2024-01-01</MDI>
+    <MDI key="source">Copernicus ERA5 via Open-Meteo AWS open data</MDI>
+    <MDI key="temporal_complete">True</MDI>
+    <MDI key="units">mm</MDI>
+    <MDI key="year">2024</MDI>
+  </Metadata>
+  <PAMRasterBand band="1">
+    <Histograms>
+      <HistItem>
+        <HistMin>13.30000019073486</HistMin>
+        <HistMax>2636.300048828125</HistMax>
+        <BucketCount>256</BucketCount>
+        <IncludeOutOfRange>1</IncludeOutOfRange>
+        <Approximate>0</Approximate>
+        <HistCounts>49|52|56|39|23|15|13|21|17|22|19|39|27|19|19|18|43|38|34|44|56|57|105|74|96|72|81|57|47|58|72|62|67|41|63|59|59|74|57|62|59|52|49|41|50|44|33|24|29|19|26|21|14|25|24|15|15|13|22|15|21|21|15|17|17|19|15|22|18|17|11|7|20|15|6|11|12|12|12|14|12|14|16|15|12|13|8|18|12|10|8|11|9|11|13|9|3|5|9|8|12|5|11|10|11|8|13|2|8|5|5|4|4|9|4|6|6|4|5|5|5|3|6|4|2|4|7|4|10|0|1|2|5|3|4|3|3|4|3|4|0|2|0|2|1|3|3|2|2|2|2|3|2|4|0|2|2|1|1|2|0|0|2|2|1|1|2|0|0|1|2|0|1|0|1|0|0|2|0|2|0|0|0|0|2|1|1|0|1|0|0|1|2|0|0|0|1|0|0|0|0|1|0|0|0|1|1|2|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0|1|0|0|1|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|1</HistCounts>
+      </HistItem>
+    </Histograms>
+    <Metadata>
+      <MDI key="STATISTICS_COVARIANCES">130048.2392776124</MDI>
+      <MDI key="STATISTICS_EXCLUDEDVALUES"></MDI>
+      <MDI key="STATISTICS_MAXIMUM">2636.3000488281</MDI>
+      <MDI key="STATISTICS_MEAN">478.15029108334</MDI>
+      <MDI key="STATISTICS_MEDIAN">373.319615</MDI>
+      <MDI key="STATISTICS_MINIMUM">13.300000190735</MDI>
+      <MDI key="STATISTICS_SKIPFACTORX">1</MDI>
+      <MDI key="STATISTICS_SKIPFACTORY">1</MDI>
+      <MDI key="STATISTICS_STDDEV">360.62201718366</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>

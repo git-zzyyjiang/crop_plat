@@ -1,0 +1,12 @@
+[
+  { "code": 1,  "name": "早熟谷物",             "color": "#F2D24B", "icon": "cropEarlyGrain" },
+  { "code": 2,  "name": "春季谷物",             "color": "#E07B2E", "icon": "cropSpringGrain" },
+  { "code": 3,  "name": "玉米",                 "color": "#A3D14A", "icon": "cropCorn" },
+  { "code": 4,  "name": "水稻",                 "color": "#3E9FE0", "icon": "cropRice" },
+  { "code": 5,  "name": "油料作物",             "color": "#E86FA6", "icon": "cropOil" },
+  { "code": 6,  "name": "饲草作物",             "color": "#35BFA0", "icon": "cropForage" },
+  { "code": 7,  "name": "糖用甜菜/长生育期作物", "color": "#9B72D9", "icon": "cropBeet" },
+  { "code": 8,  "name": "果园/多年生园地",       "color": "#D8544F", "icon": "cropOrchard" },
+  { "code": 9,  "name": "废弃/休耕",             "color": "#A98E6B", "icon": "cropFallow" },
+  { "code": 10, "name": "其他",                 "color": "#8C97A3", "icon": "cropOther" }
+]

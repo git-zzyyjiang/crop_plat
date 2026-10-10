@@ -1,0 +1,16 @@
+{"type":"FeatureCollection", "features": [
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.72527780000007,19.696388890000037]},"properties":{"F110_46194":109.7252778,"F19_938888":19.69638889,"name":"临高加来机场（1）"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[110.37944440000007,19.675277780000044]},"properties":{"F110_46194":110.3794444,"F19_938888":19.67527778,"name":"金林海口甲子通用机场"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.43555560000004,19.551111110000022]},"properties":{"F110_46194":109.4355556,"F19_938888":19.55111111,"name":"儋州西庆机场"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[108.77277780000009,19.143888890000028]},"properties":{"F110_46194":108.7727778,"F19_938888":19.14388889,"name":"东方大田机场"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.48000000000008,19.172222220000037]},"properties":{"F110_46194":109.48,"F19_938888":19.17222222,"name":"白沙通用航空机场"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[110.45833330000005,19.139166670000066]},"properties":{"F110_46194":110.4583333,"F19_938888":19.13916667,"name":"琼海博鳌机场"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.15944440000004,18.690555560000064]},"properties":{"F110_46194":109.1594444,"F19_938888":18.69055556,"name":"乐东机场（2）"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[110.27416670000008,18.757777780000026]},"properties":{"F110_46194":110.2741667,"F19_938888":18.75777778,"name":"万宁美亚通用机场土跑道"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[108.74027780000006,18.55638889000005]},"properties":{"F110_46194":108.7402778,"F19_938888":18.55638889,"name":"海花航空飞行营地"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.98722220000008,18.49555556000007]},"properties":{"F110_46194":109.9872222,"F19_938888":18.49555556,"name":"陵水机场（3）"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.75472220000006,18.38611111000006]},"properties":{"F110_46194":109.7547222,"F19_938888":18.38611111,"name":"塔赫跳伞（三亚基地）"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.40361110000003,18.306666670000027]},"properties":{"F110_46194":109.4036111,"F19_938888":18.30666667,"name":"三亚凤凰国际机场（4）"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[109.41777780000007,18.301388890000055]},"properties":{"F110_46194":109.4177778,"F19_938888":18.30138889,"name":"海洋丽星亚龙通航直升机基地（4）"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[110.4619444,19.93888889]},"properties":{"F110_46194":110.461944,"F19_938888":19.9388889,"name":"海口美兰国际机场"}}
+]}

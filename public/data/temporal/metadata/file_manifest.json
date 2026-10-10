@@ -1,0 +1,1787 @@
+{
+  "generated_on": "2026-10-06",
+  "root": "C:\\Users\\19083\\Desktop\\10.4\\10.6",
+  "files": [
+    {
+      "path": "01_basemap/lakes.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "01_basemap/lakes.dbf",
+      "bytes": 134078,
+      "sha256": "c16d4ff1d100f45b6225962f2b6d97ab1e353f7cebbaa866426960bbfbbb001a"
+    },
+    {
+      "path": "01_basemap/lakes.fields.json",
+      "bytes": 1024,
+      "sha256": "fb7cbfaad2fa8b6717c892357c2911e7ac88fb96e3d67ec89d8bbb0ef2d1a7ad"
+    },
+    {
+      "path": "01_basemap/lakes.geojson",
+      "bytes": 104491,
+      "sha256": "4c44ccd0c169f4eb83886febb91c61650231666b4b9264ea9618a1b30ffaaaea"
+    },
+    {
+      "path": "01_basemap/lakes.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "01_basemap/lakes.shp",
+      "bytes": 36820,
+      "sha256": "63d8052a861c448d780b48901412d1ee6cceec62c48e82ddf0c820b7721bdf63"
+    },
+    {
+      "path": "01_basemap/lakes.shx",
+      "bytes": 244,
+      "sha256": "0dd743e546bfdb8cd4485980eadea4835d2f4be1bca27cf29cf98d25ae0d1b1b"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.dbf",
+      "bytes": 49574,
+      "sha256": "1c55a8cc1d668f5e3131f212adbcaa4e589bd4f71d441b108c2a18a8ce931ca8"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.fields.json",
+      "bytes": 942,
+      "sha256": "4df61995314222653f9c488365cfd94a4caa7b660e3a965ce267cf9eb77089a7"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.geojson",
+      "bytes": 24590,
+      "sha256": "74fcd2b1f63a242cc8e8554c1f074b7c9f82bb91a3a0785264cc1ca13ba8cebb"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.shp",
+      "bytes": 7520,
+      "sha256": "9f9475929fb80b5dec80b9371435db2fd4907209af2aa1a47d1404a7634bf2d6"
+    },
+    {
+      "path": "01_basemap/mountain_ranges.shx",
+      "bytes": 156,
+      "sha256": "1f6178af0b5bb7974474778f35a1ff3587fb8a290e4701899aa570e8d44a6d8b"
+    },
+    {
+      "path": "01_basemap/rivers.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "01_basemap/rivers.dbf",
+      "bytes": 22866,
+      "sha256": "1f7922a0dafd8645cd4be548992e50c3e35b3c125a5fc47a7daf8da14c7d2d9c"
+    },
+    {
+      "path": "01_basemap/rivers.fields.json",
+      "bytes": 963,
+      "sha256": "cbb00c76567005f2cb3a03486db0ec794da52ba42932331df1098a260a96e3d3"
+    },
+    {
+      "path": "01_basemap/rivers.geojson",
+      "bytes": 154055,
+      "sha256": "d1c7363d590814990c39b186a0c3d79b1fd77da5f2fad754c6fcc7c16d843a7b"
+    },
+    {
+      "path": "01_basemap/rivers.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "01_basemap/rivers.shp",
+      "bytes": 62664,
+      "sha256": "78da94032294e7f96fd6bd8a981e20544e0eef392de4076649e9a653a4755034"
+    },
+    {
+      "path": "01_basemap/rivers.shx",
+      "bytes": 228,
+      "sha256": "5ea46cbec0e0a7f4baf92471e6dd315dc265bd4c1724497ea71b8e144de286cb"
+    },
+    {
+      "path": "01_basemap/rivers_major.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "01_basemap/rivers_major.dbf",
+      "bytes": 1228226,
+      "sha256": "7c6ae79c70a9ec43b97272c3ede52a47974a35a544fa92e5408d86769b4054c7"
+    },
+    {
+      "path": "01_basemap/rivers_major.fields.json",
+      "bytes": 407,
+      "sha256": "5322ebf802304f6454bb45be18c50836ba9eebcbbb0b7ada9df39d5ac40eea46"
+    },
+    {
+      "path": "01_basemap/rivers_major.geojson",
+      "bytes": 2631485,
+      "sha256": "c1c78c792bc4310e083fc5239e682f2aa77c0b01fc6d45aba943573b7afcfd64"
+    },
+    {
+      "path": "01_basemap/rivers_major.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "01_basemap/rivers_major.shp",
+      "bytes": 682364,
+      "sha256": "12e330e818a7d24aa623f6eff93df2a33e057a9c5005a7c7b13873a2c0fafba0"
+    },
+    {
+      "path": "01_basemap/rivers_major.shx",
+      "bytes": 37164,
+      "sha256": "674becb139f310a6d89c1567bafc5483a61db61095f12961ce2bd55883b33caa"
+    },
+    {
+      "path": "01_basemap/rivers_named.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "01_basemap/rivers_named.dbf",
+      "bytes": 22866,
+      "sha256": "1f7922a0dafd8645cd4be548992e50c3e35b3c125a5fc47a7daf8da14c7d2d9c"
+    },
+    {
+      "path": "01_basemap/rivers_named.fields.json",
+      "bytes": 963,
+      "sha256": "cbb00c76567005f2cb3a03486db0ec794da52ba42932331df1098a260a96e3d3"
+    },
+    {
+      "path": "01_basemap/rivers_named.geojson",
+      "bytes": 154055,
+      "sha256": "d1c7363d590814990c39b186a0c3d79b1fd77da5f2fad754c6fcc7c16d843a7b"
+    },
+    {
+      "path": "01_basemap/rivers_named.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "01_basemap/rivers_named.shp",
+      "bytes": 62664,
+      "sha256": "78da94032294e7f96fd6bd8a981e20544e0eef392de4076649e9a653a4755034"
+    },
+    {
+      "path": "01_basemap/rivers_named.shx",
+      "bytes": 228,
+      "sha256": "5ea46cbec0e0a7f4baf92471e6dd315dc265bd4c1724497ea71b8e144de286cb"
+    },
+    {
+      "path": "02_boundaries/countries.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "02_boundaries/countries.dbf",
+      "bytes": 878482,
+      "sha256": "d61f4ae6cac2ab0de0ea218874a08d6618154829f9da5f4176a95103009912f7"
+    },
+    {
+      "path": "02_boundaries/countries.fields.json",
+      "bytes": 4625,
+      "sha256": "8f0e92f0e74e214fc124ab9edc729997f123f1ceae17bc81974727550a7fb390"
+    },
+    {
+      "path": "02_boundaries/countries.geojson",
+      "bytes": 22469947,
+      "sha256": "11758f660e4be4a042eb8cd7e843c45cfdf7bf7e2d6cf1183ced02ec99f3ea6f"
+    },
+    {
+      "path": "02_boundaries/countries.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "02_boundaries/countries.shp",
+      "bytes": 8806244,
+      "sha256": "2d1be4c3d03792c240aa527d6a890797e5b0abeba06346aa49ad7cf8d2526eb9"
+    },
+    {
+      "path": "02_boundaries/countries.shx",
+      "bytes": 2164,
+      "sha256": "30ccafca517946ef76e9f8049a1d82c7b3f68ac90b7350354a7fba56e6457bce"
+    },
+    {
+      "path": "02_boundaries/country_borders.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "02_boundaries/country_borders.dbf",
+      "bytes": 1115192,
+      "sha256": "efb201eedd4f92fc8bd1ae62376cc039e5fe603986d29ec3f1c0a389b98b9374"
+    },
+    {
+      "path": "02_boundaries/country_borders.fields.json",
+      "bytes": 1527,
+      "sha256": "a1645d346e41e95bba0ff9bd9dd1382735bd245fe1eb0908da63ff0bee684508"
+    },
+    {
+      "path": "02_boundaries/country_borders.geojson",
+      "bytes": 3585403,
+      "sha256": "5cb84325c38e613cf9238402faa2b28e6da782b594f7edcb9ae6254e06794a3f"
+    },
+    {
+      "path": "02_boundaries/country_borders.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "02_boundaries/country_borders.shp",
+      "bytes": 1295520,
+      "sha256": "b6811b9e2f6ed40b31622e6d261210c5e6afded9b7ad71977d3658293f56373f"
+    },
+    {
+      "path": "02_boundaries/country_borders.shx",
+      "bytes": 4220,
+      "sha256": "e4128caba567cd9e0b11f3a2a0f0b18dfc8f0bb3cd03f2535f750887d6b86fe5"
+    },
+    {
+      "path": "02_boundaries/province_borders.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "02_boundaries/province_borders.dbf",
+      "bytes": 10655458,
+      "sha256": "f37dacc0926f3939afaf4c6934973256a8d55f5d035e46316a4fc3565bec86b8"
+    },
+    {
+      "path": "02_boundaries/province_borders.fields.json",
+      "bytes": 1612,
+      "sha256": "84d7eaaa2be86d5b76d2a5eb2b56a2514e0ba0a9d05fb1b46286937bf5f9ab09"
+    },
+    {
+      "path": "02_boundaries/province_borders.geojson",
+      "bytes": 12058928,
+      "sha256": "0fba0edd0967662c23e265d011d4817541724d2eba19f8c88b20154822d060c9"
+    },
+    {
+      "path": "02_boundaries/province_borders.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "02_boundaries/province_borders.shp",
+      "bytes": 3426500,
+      "sha256": "a32c9345a8a8cd349d55c34b774cd9f7376801ca1a6b431bc738b3e72b14933c"
+    },
+    {
+      "path": "02_boundaries/province_borders.shx",
+      "bytes": 30980,
+      "sha256": "bc8006d9353403219238a5e3dcb8fb2836e8b47add257e98263f12a6cd981d1b"
+    },
+    {
+      "path": "02_boundaries/provinces.cpg",
+      "bytes": 5,
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    {
+      "path": "02_boundaries/provinces.dbf",
+      "bytes": 5937008,
+      "sha256": "95e0f3d0098b667ecbc4e2ededbdcbdd156194fe51c614922c9764e0ee2b65ab"
+    },
+    {
+      "path": "02_boundaries/provinces.fields.json",
+      "bytes": 3282,
+      "sha256": "36a32af1035a36ce98205668c13cbc33c27731575b3ccec6b21cb3211e78d263"
+    },
+    {
+      "path": "02_boundaries/provinces.geojson",
+      "bytes": 26985997,
+      "sha256": "934f6e0a78bbbe04a14a3de5019961ef7714907df1001dce9c63a3c35383e258"
+    },
+    {
+      "path": "02_boundaries/provinces.prj",
+      "bytes": 145,
+      "sha256": "a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4"
+    },
+    {
+      "path": "02_boundaries/provinces.shp",
+      "bytes": 9348844,
+      "sha256": "b636b55779e6f273d29fa82214e6ba12027c5b3005f64626de9b1d803b46d435"
+    },
+    {
+      "path": "02_boundaries/provinces.shx",
+      "bytes": 14492,
+      "sha256": "1c0d28112acdb0fa301b5810f8826d944bd8d84ab8bef3ec22613e69eca5dbf5"
+    },
+    {
+      "path": "03_terrain/elevation_m.json",
+      "bytes": 932,
+      "sha256": "c3faebd041e15b9ab360e904befed64eb9f0e33e3e7ee7a66be2111214377c51"
+    },
+    {
+      "path": "03_terrain/elevation_m.png",
+      "bytes": 7217641,
+      "sha256": "49a927bb05033a1668ffa6d7178e49dd67096491a138b9fae9a7ca0b7ca3b61e"
+    },
+    {
+      "path": "03_terrain/elevation_m.tif",
+      "bytes": 35203383,
+      "sha256": "27c53795603817c5ba69993d3fc55d430009c2dc01b74779411b6197c357365b"
+    },
+    {
+      "path": "03_terrain/elevation_m.tif.aux.xml",
+      "bytes": 2203,
+      "sha256": "d4ec364dfaf1de166c09403d9016b9d1798d1fb7fb865a2fbd76202f1794dfe1"
+    },
+    {
+      "path": "03_terrain/elevation_m_web3857.png",
+      "bytes": 2951785,
+      "sha256": "36e88bf2399929b3177edb6c04199114d690d4ccff95746867f3c7f9ca3b1d35"
+    },
+    {
+      "path": "03_terrain/slope_deg.json",
+      "bytes": 954,
+      "sha256": "8925a659d4c33f0476afbeb7791ea757bf45581cc339fbe2a1dc55e44540576b"
+    },
+    {
+      "path": "03_terrain/slope_deg.png",
+      "bytes": 12680826,
+      "sha256": "eeb6fbddaa3050b08bc0d2baa529c2eb1c02251e942492ecdcc136eb2c4c8666"
+    },
+    {
+      "path": "03_terrain/slope_deg.tif",
+      "bytes": 37660506,
+      "sha256": "6c7462e342e1aaaaf552f03d772f3e2e3ea95cc64cbf99f70b5e158b0c74d4b4"
+    },
+    {
+      "path": "03_terrain/slope_deg_web3857.png",
+      "bytes": 4257044,
+      "sha256": "6605f53ebf2b1484131f9c07461d3295ff378e18dc443aa593069fbfe57eda01"
+    },
+    {
+      "path": "04_imagery/S1_2024_layer.json",
+      "bytes": 2078,
+      "sha256": "e469fd63508b8806da3ec7d34676d3cdda6339d23ae81ca65e733b90a5ccafa2"
+    },
+    {
+      "path": "04_imagery/S1_2024_registration.json",
+      "bytes": 791,
+      "sha256": "517ad2ebc0739b14a848343e8b9aaa7b4dda9cca92a2e4752696af8fcaa9093c"
+    },
+    {
+      "path": "04_imagery/S1_2024_sample.png",
+      "bytes": 56930,
+      "sha256": "57e062667645cf20e56b9faa606223260881fb73ac6f4e67a413def52ca6bbb8"
+    },
+    {
+      "path": "04_imagery/S1_2024_sample_353_192.png",
+      "bytes": 133866,
+      "sha256": "338f6a259f3e44515cd524c22ce7ef7f629a6228f5fc53c38828a9014c52c04f"
+    },
+    {
+      "path": "04_imagery/S1_2024_sample_366_184.png",
+      "bytes": 71980,
+      "sha256": "c9d9c27a9465e4f3b882d54e82038bdbfb343aa39024a13322b0dc4ac085571b"
+    },
+    {
+      "path": "04_imagery/S1_2024_sample_380_174.png",
+      "bytes": 43723,
+      "sha256": "480b1d04e03568618e1ecf6b43ce5fe7c826d3f086510168c2872b1361d7a9f3"
+    },
+    {
+      "path": "04_imagery/S1_2024_search.json",
+      "bytes": 255,
+      "sha256": "ce9b9f9c87444182ceb6dee4b5d589894eb1bd0788ce5fdeddf0a6911ee5c5dc"
+    },
+    {
+      "path": "04_imagery/S1_2024_tilejson.json",
+      "bytes": 501,
+      "sha256": "41dc2417f017cf468faad861f52650b79ba8dcb36572113031b145a7b0f2885f"
+    },
+    {
+      "path": "04_imagery/S1_2025_layer.json",
+      "bytes": 2075,
+      "sha256": "c1cde88190ffa70664dfa03411928358e0d7c44838966f7ea71c9c5a8fb46dc7"
+    },
+    {
+      "path": "04_imagery/S1_2025_registration.json",
+      "bytes": 791,
+      "sha256": "7ec4ef1bfb7fdb91de20e8b1f6e707dee38791c28084f360ad410dbfd5319eca"
+    },
+    {
+      "path": "04_imagery/S1_2025_sample.png",
+      "bytes": 53316,
+      "sha256": "e5456804919b0d0765f3af91ce97667e2593a17ebeeaa0a963ec96ea6779d685"
+    },
+    {
+      "path": "04_imagery/S1_2025_sample_353_192.png",
+      "bytes": 91591,
+      "sha256": "3eeabc11fb2bdcbffaee0cdaa8123157d225ada1082eeddce83f8b5e3576caee"
+    },
+    {
+      "path": "04_imagery/S1_2025_sample_366_184.png",
+      "bytes": 45799,
+      "sha256": "5c61b3941ddbeb0b935a6109679e1913778519b1f79282cdb9f3cc3b3e3542cc"
+    },
+    {
+      "path": "04_imagery/S1_2025_sample_380_174.png",
+      "bytes": 71614,
+      "sha256": "aeae8a970db2c4ea03af8480babd270a6cb5cdaaa549fe76964f5fdd3e2260d6"
+    },
+    {
+      "path": "04_imagery/S1_2025_search.json",
+      "bytes": 255,
+      "sha256": "6ab1bb2b07dea4e068c5b656d81bbd766996e29b3865190edcd83778c5f39b1f"
+    },
+    {
+      "path": "04_imagery/S1_2025_tilejson.json",
+      "bytes": 501,
+      "sha256": "413640c7e4523fabaec48a821676ded3dc7ea027c2663e8f63965890ccfcb0b5"
+    },
+    {
+      "path": "04_imagery/S1_2026_layer.json",
+      "bytes": 2076,
+      "sha256": "d67e093339faf367e311e5236be8dc14a30fcadc6560d2d76669c1a19dc5ebe9"
+    },
+    {
+      "path": "04_imagery/S1_2026_registration.json",
+      "bytes": 791,
+      "sha256": "acaaa1a2ab19a6c41323804fccbc8ccebfb89310cc05a7dafc0754e43e199b36"
+    },
+    {
+      "path": "04_imagery/S1_2026_sample.png",
+      "bytes": 49627,
+      "sha256": "2ef04937a4101eeef6674ddd3f0f29231d103e683e139db6c8262c51792cd3a6"
+    },
+    {
+      "path": "04_imagery/S1_2026_sample_353_192.png",
+      "bytes": 79422,
+      "sha256": "094e044125f39fa9a49dbf45a35859b5c4bf90a98e6295d10d97ea610ce2a6f4"
+    },
+    {
+      "path": "04_imagery/S1_2026_sample_366_184.png",
+      "bytes": 42371,
+      "sha256": "c3db1f228def78d67804a2995a10ddfe2a225c77ac33f1531ee7881663e632aa"
+    },
+    {
+      "path": "04_imagery/S1_2026_sample_380_174.png",
+      "bytes": 96122,
+      "sha256": "add276b320a7ea9e27415c7c52cc0245b66cdc8505b82479ca77e362e4715b53"
+    },
+    {
+      "path": "04_imagery/S1_2026_search.json",
+      "bytes": 255,
+      "sha256": "e241bef19b777b70afa708b6c4a30f14f2fcee71ba50d7a3ead630fefdb80889"
+    },
+    {
+      "path": "04_imagery/S1_2026_tilejson.json",
+      "bytes": 501,
+      "sha256": "07efd807d110629a4a0985f92c0359c197887de03d8337987bd9b409f22c998d"
+    },
+    {
+      "path": "04_imagery/S2_2024_layer.json",
+      "bytes": 2172,
+      "sha256": "661038b7008489d77b6405ebb06de1d2ba9ccc82bfbc953f7b44fc4e04cb155c"
+    },
+    {
+      "path": "04_imagery/S2_2024_registration.json",
+      "bytes": 791,
+      "sha256": "373af2ebbbcfdf0a2b67af90cef41b1dd9eda1af7c6bd67ee55c3ab71cdc5763"
+    },
+    {
+      "path": "04_imagery/S2_2024_sample.png",
+      "bytes": 3336,
+      "sha256": "9e3bc5064048deb284fc2f7e1ddec155b74cc9aa93a0839794d6f2d36cd0d649"
+    },
+    {
+      "path": "04_imagery/S2_2024_sample_353_192.png",
+      "bytes": 178894,
+      "sha256": "7def223d765dae683db8aae016b9f49b7cbbe247773baf030024c7214777d27d"
+    },
+    {
+      "path": "04_imagery/S2_2024_sample_366_184.png",
+      "bytes": 3458,
+      "sha256": "e131fe8087ab01e9de16d81bdb0a894616713825989d94df968dbd1e327ca9a9"
+    },
+    {
+      "path": "04_imagery/S2_2024_sample_380_174.png",
+      "bytes": 3736,
+      "sha256": "3cb9141cb3df6d45b7865360f3518fcccc5eb1e5cd9559ea0fb3065c70a97c9c"
+    },
+    {
+      "path": "04_imagery/S2_2024_search.json",
+      "bytes": 323,
+      "sha256": "32b22e6831556ff12715fcec906fd5a626f44ee3a4edaddd4735fdf16ab68e18"
+    },
+    {
+      "path": "04_imagery/S2_2024_tilejson.json",
+      "bytes": 506,
+      "sha256": "4f30c35e4f2832f246978513937d5326cd9df87db41d32cb0a64ea407517b8be"
+    },
+    {
+      "path": "04_imagery/S2_2025_layer.json",
+      "bytes": 2172,
+      "sha256": "e6470e8c1bca65b3a4da21f9830ff12172cee7b52e06701bb050baefd7c8e2ca"
+    },
+    {
+      "path": "04_imagery/S2_2025_registration.json",
+      "bytes": 791,
+      "sha256": "82a70a95cdf36dda7df8eadb7f033d084f6845a1836f44df741436697cc8d74e"
+    },
+    {
+      "path": "04_imagery/S2_2025_sample.png",
+      "bytes": 153451,
+      "sha256": "5e54db9ad4582912e7dfd46d4bd6c19fdd505e9fafcaa2b94df4ea30b667e3ae"
+    },
+    {
+      "path": "04_imagery/S2_2025_sample_353_192.png",
+      "bytes": 52411,
+      "sha256": "355c8a0c0b4cbb1514160943f24130d53180fe98179798c26d2133c17d8c2ab0"
+    },
+    {
+      "path": "04_imagery/S2_2025_sample_366_184.png",
+      "bytes": 73983,
+      "sha256": "dc54d1539736aee1a14761fa590c7871436bf15a092ffa4e094bf42678b12980"
+    },
+    {
+      "path": "04_imagery/S2_2025_sample_380_174.png",
+      "bytes": 31712,
+      "sha256": "e0d1540c667d96615850412d9aeb2adaa416bb18fbac5ee495e678a202201f7c"
+    },
+    {
+      "path": "04_imagery/S2_2025_search.json",
+      "bytes": 323,
+      "sha256": "6ba35fd038d8c05c4ffc43306bdfa246b478b038afa473988ee9a566b25eec1f"
+    },
+    {
+      "path": "04_imagery/S2_2025_tilejson.json",
+      "bytes": 506,
+      "sha256": "7bb23f0761a34c4df68ba09cd02f1871ac7e232326e0d712d719c543014b3218"
+    },
+    {
+      "path": "04_imagery/S2_2026_layer.json",
+      "bytes": 2179,
+      "sha256": "8dda762bf697737bfff329249564de94c2449a253e5696aa405a47f13d881890"
+    },
+    {
+      "path": "04_imagery/S2_2026_registration.json",
+      "bytes": 791,
+      "sha256": "007a045a46d74b54b8ad8b75c83d6fc98f25441a0a494892760a6dfa53c48981"
+    },
+    {
+      "path": "04_imagery/S2_2026_sample.png",
+      "bytes": 130272,
+      "sha256": "b118cfe4dfbf81c8f2cb080219e8a7b0244997d635a4ee6bb0ea0330a7364b21"
+    },
+    {
+      "path": "04_imagery/S2_2026_sample_353_192.png",
+      "bytes": 195624,
+      "sha256": "e53c43cf1416b841124724b924957860437cee12d0936b384e688d4fe4bed461"
+    },
+    {
+      "path": "04_imagery/S2_2026_sample_366_184.png",
+      "bytes": 153493,
+      "sha256": "ea806f5661cd91d0853e7fab197b6ded591aeea4fd80bc609debcbf061320dc1"
+    },
+    {
+      "path": "04_imagery/S2_2026_sample_380_174.png",
+      "bytes": 166447,
+      "sha256": "dc387696413facd604fcb2f7ab24b68530014ae360b1cf73729ae93914ffb5ba"
+    },
+    {
+      "path": "04_imagery/S2_2026_search.json",
+      "bytes": 323,
+      "sha256": "85a676845cc392d76108a14cfc02f4e62e9fa72cfbdb9a9131c58a7c6eff73bb"
+    },
+    {
+      "path": "04_imagery/S2_2026_tilejson.json",
+      "bytes": 506,
+      "sha256": "98ae88f44319d47179c238bf097bd80ecc2fbb6c8539f41189033e094e42dcc2"
+    },
+    {
+      "path": "04_imagery/frontend_examples.js",
+      "bytes": 2191,
+      "sha256": "a83a0537d862aa9de4af675762b42ca198707806c636908dc8790dce62f5ffda"
+    },
+    {
+      "path": "04_imagery/services.json",
+      "bytes": 14703,
+      "sha256": "a8841e8cd6ce524e80c4a9314e12112c130e4d9e7e805f9565bfe47555c7696d"
+    },
+    {
+      "path": "05_weather/2024/precipitation_2024.geojson",
+      "bytes": 1079416,
+      "sha256": "345e945f29973e5828b489e91d6773771b3325b2cb1dab7c7bb333cc2b0bb81e"
+    },
+    {
+      "path": "05_weather/2024/precipitation_2024.json",
+      "bytes": 1230,
+      "sha256": "26884795ceb4090b4129c15d4914073e6868434cc8ce397a76f3dbcc43cb5775"
+    },
+    {
+      "path": "05_weather/2024/precipitation_2024.png",
+      "bytes": 6642,
+      "sha256": "2ae160d1e414643df037a3359384296744438cd91414a908264aca9a5aa1f339"
+    },
+    {
+      "path": "05_weather/2024/precipitation_2024.tif",
+      "bytes": 11118,
+      "sha256": "fd69cf088d4c0bcdfcdad9163c0b09bdec90d898812254552493398d78b2df56"
+    },
+    {
+      "path": "05_weather/2024/precipitation_2024.tif.aux.xml",
+      "bytes": 1999,
+      "sha256": "b9317576aba7d6ddf80889763a322d44de3b99e442a2521780fdbc727aa903b5"
+    },
+    {
+      "path": "05_weather/2024/precipitation_2024_web3857.png",
+      "bytes": 7274,
+      "sha256": "5d7e5d4cd6a7b88203e27c9929db55bbe6258ed51fac994f82bd96b19336bfa6"
+    },
+    {
+      "path": "05_weather/2024/temperature_2024.geojson",
+      "bytes": 1090228,
+      "sha256": "5b987178df5321b4a528ee65c740db716012c9b0fd0168e2f999549e1482dbf5"
+    },
+    {
+      "path": "05_weather/2024/temperature_2024.json",
+      "bytes": 1211,
+      "sha256": "b007705785058f17372f3b71fc9a8b1564f55635ea78d9b939e126080a7f6200"
+    },
+    {
+      "path": "05_weather/2024/temperature_2024.png",
+      "bytes": 5885,
+      "sha256": "6ec67afa22487d2a11b17915ec5612f7ab33a4c773038de4651e718f2916f2ca"
+    },
+    {
+      "path": "05_weather/2024/temperature_2024.tif",
+      "bytes": 14072,
+      "sha256": "7147e390e412696f9535e9e604cc3263f9b204a414d08a8ba94a5a01f3fcd877"
+    },
+    {
+      "path": "05_weather/2024/temperature_2024.tif.aux.xml",
+      "bytes": 2035,
+      "sha256": "7cd279a56ba53fb2eebf76bc839b2857669731125256a5919c2c6832d50b8eb2"
+    },
+    {
+      "path": "05_weather/2024/temperature_2024_web3857.png",
+      "bytes": 6502,
+      "sha256": "4559dd0679e8f9fc8499ad253c5298f4b66212aea420683f8309b18ab4d8907e"
+    },
+    {
+      "path": "05_weather/2025/precipitation_2025.geojson",
+      "bytes": 1079076,
+      "sha256": "148792d4f66c9e647caa915c383d73f21f1695cc848afd22d82abd546a3ed1ff"
+    },
+    {
+      "path": "05_weather/2025/precipitation_2025.json",
+      "bytes": 1229,
+      "sha256": "34b2515c29c61974d337d49776b10cb556b284f768bc21d1f455d5a22970778e"
+    },
+    {
+      "path": "05_weather/2025/precipitation_2025.png",
+      "bytes": 6503,
+      "sha256": "2ad0bedfbac0cbf65203484173971da1cb538ee3bc7d84c647b646f814fcc44b"
+    },
+    {
+      "path": "05_weather/2025/precipitation_2025.tif",
+      "bytes": 10918,
+      "sha256": "818bd73e5917fc6bf64f630db1a3c44a9c0ea111338f4b5e9a5a072b68548fc6"
+    },
+    {
+      "path": "05_weather/2025/precipitation_2025.tif.aux.xml",
+      "bytes": 1991,
+      "sha256": "4f66901d698438c064c35e2bb40f239e69531b4995628eae27eaf5e2ef0ca8a5"
+    },
+    {
+      "path": "05_weather/2025/precipitation_2025_web3857.png",
+      "bytes": 7142,
+      "sha256": "65bcfc4e916448fbc24e2d1300f29317ff589582e29b852512ad91602043336c"
+    },
+    {
+      "path": "05_weather/2025/temperature_2025.geojson",
+      "bytes": 1090439,
+      "sha256": "7c13a21535945ccb817966cc289671db6ae462c05cc2ab69ac6d88d166a7763f"
+    },
+    {
+      "path": "05_weather/2025/temperature_2025.json",
+      "bytes": 1211,
+      "sha256": "0ef4ca3f6fc5a22f5bdc4126e98d54d703b342026437c839ebb6c53e5eb75f92"
+    },
+    {
+      "path": "05_weather/2025/temperature_2025.png",
+      "bytes": 5865,
+      "sha256": "344375c458df36550add7f7c2bf5d0160b59d3a9a5d820a67e2c67db10fc41ff"
+    },
+    {
+      "path": "05_weather/2025/temperature_2025.tif",
+      "bytes": 14038,
+      "sha256": "95631407c71f9c480d260cdae07e2947c9cf1d3be5a1c099c3c8ee619f0bc12c"
+    },
+    {
+      "path": "05_weather/2025/temperature_2025_web3857.png",
+      "bytes": 6541,
+      "sha256": "1e60cf213d5ecd931b900c03880bec03e1b8e32cfdd1daa47b704941826bb05e"
+    },
+    {
+      "path": "05_weather/2026/precipitation_2026.geojson",
+      "bytes": 1082126,
+      "sha256": "06925ef697696330b10c12c88188328afe9838540d9f24e43bfde60c68c46da3"
+    },
+    {
+      "path": "05_weather/2026/precipitation_2026.json",
+      "bytes": 1219,
+      "sha256": "692ca5ffbcdf49d59d0475276a44eb8f9d1b924f02d4045b924138074eac6f58"
+    },
+    {
+      "path": "05_weather/2026/precipitation_2026.png",
+      "bytes": 6348,
+      "sha256": "ee1809ac1ab4a2b6e6119bc5572b0f8536c4392f9175f986a9af6a2ec468a43e"
+    },
+    {
+      "path": "05_weather/2026/precipitation_2026.tif",
+      "bytes": 10744,
+      "sha256": "61e42da654730823feb6d856263af49c3c8475a39811cc229f421a224c19d322"
+    },
+    {
+      "path": "05_weather/2026/precipitation_2026_web3857.png",
+      "bytes": 6951,
+      "sha256": "dfc5a5c8fc2e1a8d6b45d53f3e20e74dc1b270efb032aa3ca4de24d5d42ff084"
+    },
+    {
+      "path": "05_weather/2026/temperature_2026.geojson",
+      "bytes": 1094350,
+      "sha256": "c7283a6b370b3f27b0d55a904bfe17127aead755c8f88a6968f1226d15833708"
+    },
+    {
+      "path": "05_weather/2026/temperature_2026.json",
+      "bytes": 1212,
+      "sha256": "95c9b062b9b55459ebf12c49001db568ef5049e5ec099023c877a92a1fb5b331"
+    },
+    {
+      "path": "05_weather/2026/temperature_2026.png",
+      "bytes": 6022,
+      "sha256": "81d32f9a7c65e19634f118d71f38c80a0ecd4dce71539efcd3dd6a558eb7e255"
+    },
+    {
+      "path": "05_weather/2026/temperature_2026.tif",
+      "bytes": 13845,
+      "sha256": "9df41f4b018c9a5fc0e07a18acf3813f690ed9ce02c2250805c63acd4fba680a"
+    },
+    {
+      "path": "05_weather/2026/temperature_2026_web3857.png",
+      "bytes": 6715,
+      "sha256": "6c39d4fbf32e3ac79a06527bb12b1796e3f717b649a956a8f2586151976bd6ee"
+    },
+    {
+      "path": "README_数据说明.md",
+      "bytes": 13574,
+      "sha256": "3f7c332bbebba882c9a63389d6fb5a924f568f3f9e490c8c200327e8c427b88f"
+    },
+    {
+      "path": "metadata/changes.json",
+      "bytes": 1482,
+      "sha256": "b8eb5249472bfae3f63429e0761719a885e9b56aec283fa6b1e1eb62af5036fc"
+    },
+    {
+      "path": "metadata/display_extent.geojson",
+      "bytes": 782,
+      "sha256": "dfacecaee231df0034146b66e8daec1d71e5c72d118135ef9cc0530172cd406d"
+    },
+    {
+      "path": "metadata/imagery_validation.json",
+      "bytes": 9638,
+      "sha256": "09620f25f9616277784c46d4adfe656634119d8bd8e34f017803a177679945ef"
+    },
+    {
+      "path": "metadata/layers.json",
+      "bytes": 35306,
+      "sha256": "349c81206defeaeab71c872e8f39ca4c10075c0c3851ea7799a16e6d0f71ff3b"
+    },
+    {
+      "path": "metadata/river_density_comparison.png",
+      "bytes": 99776,
+      "sha256": "b130192eab30473107728d11527122793cac408c3211166371f22647a64df4a9"
+    },
+    {
+      "path": "metadata/rivers.json",
+      "bytes": 1698,
+      "sha256": "705dc34a3dad4c7309a97381885fd7b434e3fb79afb13a10cdab8e4b96f51c49"
+    },
+    {
+      "path": "metadata/terrain.json",
+      "bytes": 2597,
+      "sha256": "4d0933043c8c07907f71d3a49550a5b4692b8156e1cdaa56e99052fbe4988414"
+    },
+    {
+      "path": "metadata/validation.json",
+      "bytes": 6434,
+      "sha256": "af7360730faebd2d84a1ed07d8593da60426f80338e752b1474d7276d428b205"
+    },
+    {
+      "path": "metadata/vector_sources.json",
+      "bytes": 4816,
+      "sha256": "cf1306cb42ced85910065bea175e6ced5dff1593531b768543b4225e021440f1"
+    },
+    {
+      "path": "metadata/weather.json",
+      "bytes": 10021,
+      "sha256": "6d3bc82ef31f50c6cec4eb1c8e1bf65e7b18625f81705caead1d6bc49bbe8d13"
+    },
+    {
+      "path": "metadata/weather_api_validation.json",
+      "bytes": 1458,
+      "sha256": "f19c146434d8e5b8f17619d92d6afc275d527241747595a2fc75e844ffb0c083"
+    },
+    {
+      "path": "metadata/weather_gap_fill.json",
+      "bytes": 361,
+      "sha256": "ee909c8a7b8fec7ad3ca16d3062e5a2bdb6ea3abb087bcb27c1df15eabcfe10f"
+    },
+    {
+      "path": "sources/ERA5_20260925_api_gap_fill.json",
+      "bytes": 2627946,
+      "sha256": "28573f43dcaf6903044fac7a262ce8be0fb6a26de380068b7f0f5b6f1e76e825"
+    },
+    {
+      "path": "sources/ERA5_api_check_40_68.json",
+      "bytes": 743,
+      "sha256": "c6ed8828c82236d6939a25281f84f9c432db3f2b013001668c5a1b3dc7372e30"
+    },
+    {
+      "path": "sources/ERA5_api_check_45_78.json",
+      "bytes": 746,
+      "sha256": "770d8ea3d1893ea83c7ee251a1e63b70ee9b4de5c9b1067f55d7fbd744f3387c"
+    },
+    {
+      "path": "sources/ERA5_api_check_50_88.json",
+      "bytes": 757,
+      "sha256": "8cc27306a61bbdff70d4b569696e0ac908fcffbd7cfcbb5b51fe6c998e4f8236"
+    },
+    {
+      "path": "sources/ERA5_precipitation_daily_subset_2024_2026.npz",
+      "bytes": 2008839,
+      "sha256": "69d9b940eef873143486c61c1a3821a742ade1a2e5a95701e0f728f6999289e7"
+    },
+    {
+      "path": "sources/ERA5_precipitation_requests.json",
+      "bytes": 9393,
+      "sha256": "3ea8f13e0496fafcaa38fdefeae67f652b049f6046aaf0d66ca875c81f1eb9ce"
+    },
+    {
+      "path": "sources/ERA5_temperature_daily_subset_2024_2026.npz",
+      "bytes": 8846701,
+      "sha256": "85d88df06d2873258aca0c86c43b64b9e6d1e8e9fda7b84cf3e7c117f83c9ed1"
+    },
+    {
+      "path": "sources/ERA5_temperature_requests.json",
+      "bytes": 9471,
+      "sha256": "e2090f1896856455e2bd170ed8c1831f87546e25007f583e30c5a04d3d121c12"
+    },
+    {
+      "path": "sources/S1_2024_latest_item.json",
+      "bytes": 7430,
+      "sha256": "c1da8e3d156c1aefdc4d6ee92189b9b316cc7bbcecfde365983f4504c50cd6cb"
+    },
+    {
+      "path": "sources/S1_2025_latest_item.json",
+      "bytes": 7937,
+      "sha256": "d6e3bfc2cef2961c9a234417b8749fa0559ce4176e63664dbeb92cf8e9e70c14"
+    },
+    {
+      "path": "sources/S1_2026_latest_item.json",
+      "bytes": 7851,
+      "sha256": "e6c682d5e0efe5c3b3126dcd8983b57b33388f3cde19dd16e5d80d81d724d4b5"
+    },
+    {
+      "path": "sources/S2_2024_latest_item.json",
+      "bytes": 22276,
+      "sha256": "94dd9ded8b44582f0b25144e20dd0f086a44cb8d3788e48a2a3d5d6031827f01"
+    },
+    {
+      "path": "sources/S2_2025_latest_item.json",
+      "bytes": 21871,
+      "sha256": "9fbfd97ad51ee3c7bf31a487e5cfaaa6187af720cb90fea0b8e6e214a983b3d5"
+    },
+    {
+      "path": "sources/S2_2026_latest_item.json",
+      "bytes": 22269,
+      "sha256": "84f2a3e71050afd3650e04ab682d236846ec62b1b068624e9382098264ff21f6"
+    },
+    {
+      "path": "sources/hydrorivers_selection.json",
+      "bytes": 1147,
+      "sha256": "e872435a197e9980fd83572e8642b103179f451df2f5bcd079beba870de519e5"
+    },
+    {
+      "path": "sources/ne_10m_admin_0_boundary_lines_land.zip",
+      "bytes": 1036202,
+      "sha256": "16ead035f539c8b6c23650c5845d86ad3556553e7456bdf9b4730210f26aacbe"
+    },
+    {
+      "path": "sources/ne_10m_admin_0_countries.zip",
+      "bytes": 4930492,
+      "sha256": "ce1ac7036499a0edd641fbc093cd209a98f96a49d2eca8480aaacad35138a7f6"
+    },
+    {
+      "path": "sources/ne_10m_admin_1_states_provinces.zip",
+      "bytes": 14909524,
+      "sha256": "efc59726337323058f9446210adc96673179cd344e053666ee3d28cb58ba2b05"
+    },
+    {
+      "path": "sources/ne_10m_admin_1_states_provinces_lines.zip",
+      "bytes": 5993148,
+      "sha256": "86acd56ce6c0e47f5fa79725591533b5766f26d6ed1437b086f2b8d4028fe456"
+    },
+    {
+      "path": "sources/ne_10m_geography_regions_polys.zip",
+      "bytes": 2038519,
+      "sha256": "cb7b9db200284ed1551f20eacc7f3333e9b5f311c19f7cb2670694529f688682"
+    },
+    {
+      "path": "sources/ne_10m_lakes.zip",
+      "bytes": 2349685,
+      "sha256": "0803a06f9c3cb4671d89b68c48b142aad9366ba40f665245e12a913fbc61722a"
+    },
+    {
+      "path": "sources/ne_10m_rivers_lake_centerlines.zip",
+      "bytes": 2079507,
+      "sha256": "ded71b01870855ccfe19b51f2ec14c9bb48fae23c0e9f3c11974d426433b5c38"
+    },
+    {
+      "path": "sources/terrain_z8_176_86.png",
+      "bytes": 38257,
+      "sha256": "781d3139de447795a322b3220f0a62ca02d804911c4cb86b8f85ee024fa729f7"
+    },
+    {
+      "path": "sources/terrain_z8_176_87.png",
+      "bytes": 52282,
+      "sha256": "0a38d5ee355fa004efcdb17ed9cb6712ff0f9d44eab5e9fc790450b5947babb3"
+    },
+    {
+      "path": "sources/terrain_z8_176_88.png",
+      "bytes": 52308,
+      "sha256": "554cfbc615f463e4f499ceac68b7616fa7bcaa233358dfff7ceadb1885834360"
+    },
+    {
+      "path": "sources/terrain_z8_176_89.png",
+      "bytes": 42473,
+      "sha256": "845244bf6a24ba1d556030e8dcb0807cd8b192bfa6549262178ef2fddaf90d40"
+    },
+    {
+      "path": "sources/terrain_z8_176_90.png",
+      "bytes": 41362,
+      "sha256": "811c25b1e689af26e8202828faae8d6242b708ffce4af3c397d5c0962b353714"
+    },
+    {
+      "path": "sources/terrain_z8_176_91.png",
+      "bytes": 38488,
+      "sha256": "227ff7906ce459efad070e791e99da25a1d5a078a62607c2c1d1760ac23ec920"
+    },
+    {
+      "path": "sources/terrain_z8_176_92.png",
+      "bytes": 48513,
+      "sha256": "406ce4a69fd24c81cc0879c58bc44ae980c6f0f72d4d659e0c74ebaf468129d6"
+    },
+    {
+      "path": "sources/terrain_z8_176_93.png",
+      "bytes": 64645,
+      "sha256": "a24e3b3ccff841234800ef8429cc2a68064f159c5d27366323d4b870f58e5494"
+    },
+    {
+      "path": "sources/terrain_z8_176_94.png",
+      "bytes": 39264,
+      "sha256": "2398fe5a1e2072b411d1b4e13f45d81fde97c2908fbb4ffa7e1f1d6c5ce3ad60"
+    },
+    {
+      "path": "sources/terrain_z8_176_95.png",
+      "bytes": 52621,
+      "sha256": "476ca5ab25cd4d6931ee8b8d9ad599a3a45b2881190841089c45e6bd726ef132"
+    },
+    {
+      "path": "sources/terrain_z8_176_96.png",
+      "bytes": 47349,
+      "sha256": "993302f0f8a18adbef8f0633c3d6211add17da4fd2245cbbc2fe156b0dadb470"
+    },
+    {
+      "path": "sources/terrain_z8_177_86.png",
+      "bytes": 33920,
+      "sha256": "d776fb5aa50fdf293c720a23ecdb205acf58698a201bb5657ee2e70309a6ba47"
+    },
+    {
+      "path": "sources/terrain_z8_177_87.png",
+      "bytes": 47715,
+      "sha256": "4fa10b11e49be6eff6c6b863fcb9f8fd33a9fde7ee6ac4e81b7817b6b44fa059"
+    },
+    {
+      "path": "sources/terrain_z8_177_88.png",
+      "bytes": 42128,
+      "sha256": "6ada15d5e677a6797260cfa310ca077b18d41fee9efd23e7319760a4929891b2"
+    },
+    {
+      "path": "sources/terrain_z8_177_89.png",
+      "bytes": 38241,
+      "sha256": "96066d330e1a5a8f786a25beaa54e7bf2208169fe6407f3c4e4671711d4c2dc9"
+    },
+    {
+      "path": "sources/terrain_z8_177_90.png",
+      "bytes": 42290,
+      "sha256": "97af6b36ee8cec3d9a846e70794543d940e76714432cb7cd1ed4b039addd8046"
+    },
+    {
+      "path": "sources/terrain_z8_177_91.png",
+      "bytes": 38702,
+      "sha256": "a4cba13d047b2a59a44b97ca6eaa6f15b6beac975cff85a90234d5be84ec0fab"
+    },
+    {
+      "path": "sources/terrain_z8_177_92.png",
+      "bytes": 50434,
+      "sha256": "e2b00cd3c55e35be528469749fe5a52cbb93ff5614c2cb249ed422375da39242"
+    },
+    {
+      "path": "sources/terrain_z8_177_93.png",
+      "bytes": 63711,
+      "sha256": "e84b23e2ac22d552fc7b21e38f2274417e22d44ee10f4930db58dedca0e008bd"
+    },
+    {
+      "path": "sources/terrain_z8_177_94.png",
+      "bytes": 73122,
+      "sha256": "7b7607a5e33fc11744c28abc72e0119455b9845b3e83854049ce8b4af60f8066"
+    },
+    {
+      "path": "sources/terrain_z8_177_95.png",
+      "bytes": 85193,
+      "sha256": "2c5bdbc70c5ded54da45827e016f4ec5134bc3ab9224a9131b4c73c046799a66"
+    },
+    {
+      "path": "sources/terrain_z8_177_96.png",
+      "bytes": 74732,
+      "sha256": "236926b26608388ca60d24263c1d5f2800a4bf3560cc1954d4230ab786a5f8bc"
+    },
+    {
+      "path": "sources/terrain_z8_178_86.png",
+      "bytes": 37721,
+      "sha256": "e91d7db0ccfad64163b19b986b08b8a1951245122240157596131422f6bfa7c7"
+    },
+    {
+      "path": "sources/terrain_z8_178_87.png",
+      "bytes": 49439,
+      "sha256": "813912298c30f7719b2a34ad09d20e90898c37d3cf867f765bcb1a4ec1fa87d9"
+    },
+    {
+      "path": "sources/terrain_z8_178_88.png",
+      "bytes": 47212,
+      "sha256": "6bb46ecf7a8017e604ab990fbc839c73fa2f880593be87c3fdf0fc33c5517f63"
+    },
+    {
+      "path": "sources/terrain_z8_178_89.png",
+      "bytes": 50704,
+      "sha256": "6fa412cfe3edbb0d5dba6d06d2c6c973c2fcb0f373c93c5914077f3eb4eb6b8a"
+    },
+    {
+      "path": "sources/terrain_z8_178_90.png",
+      "bytes": 46863,
+      "sha256": "1e813dc0cc39253015b69aa9c0d5460fcf10c13c89a06b99adf7f088e5145959"
+    },
+    {
+      "path": "sources/terrain_z8_178_91.png",
+      "bytes": 47503,
+      "sha256": "356c86442819f14ba65b10f7ac49e8abe8a50698410511ae2031291c97960d95"
+    },
+    {
+      "path": "sources/terrain_z8_178_92.png",
+      "bytes": 46857,
+      "sha256": "43eed629cca3eaca72900df4fa57523ba5db0f6e6bdb90b855da775a9c8f9c1d"
+    },
+    {
+      "path": "sources/terrain_z8_178_93.png",
+      "bytes": 44346,
+      "sha256": "9c9a360948530c5d1922bc19912ae2f9bd36c18f88d507fe069684f68c088683"
+    },
+    {
+      "path": "sources/terrain_z8_178_94.png",
+      "bytes": 83460,
+      "sha256": "1322116fe71a20d37f607f7fbdc91d06331af2d5aa127affa0c36feafbe13c07"
+    },
+    {
+      "path": "sources/terrain_z8_178_95.png",
+      "bytes": 97996,
+      "sha256": "3ef9825ee034093a17906a6cbe6eca3ddc5e69f3cf37e1fbd8eee3e524555972"
+    },
+    {
+      "path": "sources/terrain_z8_178_96.png",
+      "bytes": 66183,
+      "sha256": "e9f5b78960af1c8a43667436c0061560272d15cc18c61b47e4c40bec063d81cd"
+    },
+    {
+      "path": "sources/terrain_z8_179_86.png",
+      "bytes": 47445,
+      "sha256": "f2412795b8938f594971d6f28f5e1ef64d3b5330b6c7a64eede3481735c18408"
+    },
+    {
+      "path": "sources/terrain_z8_179_87.png",
+      "bytes": 53930,
+      "sha256": "d1b744a5862695f59ed9b190065bd961a0e8ce99962760abc9368e5e6b4ecba2"
+    },
+    {
+      "path": "sources/terrain_z8_179_88.png",
+      "bytes": 56284,
+      "sha256": "0ccf6fd81c0729ec2d77029d45004ff7659a1cb67e957b8817371c1660619f84"
+    },
+    {
+      "path": "sources/terrain_z8_179_89.png",
+      "bytes": 64345,
+      "sha256": "854223d4b32150404a8832edfa7939f788c697566e529013cda6774990dce788"
+    },
+    {
+      "path": "sources/terrain_z8_179_90.png",
+      "bytes": 49087,
+      "sha256": "16414feeec5fafe51ccbc88d9e10c21fc67cd2f5bacec7d3477c2bf2322c1677"
+    },
+    {
+      "path": "sources/terrain_z8_179_91.png",
+      "bytes": 51441,
+      "sha256": "92dc2310a0e1e2acdde38a6c14c2f90b451809f24956b2df183fc25a0c492fd0"
+    },
+    {
+      "path": "sources/terrain_z8_179_92.png",
+      "bytes": 40081,
+      "sha256": "f883dc979d646cc36cb71ca2a023c4f7e3427c73ffd4468de8c8fcdcc4410a30"
+    },
+    {
+      "path": "sources/terrain_z8_179_93.png",
+      "bytes": 46052,
+      "sha256": "7ef998a42f19cac8e3ddca4cd4b7bc68254737036aac7253a1177534939659b0"
+    },
+    {
+      "path": "sources/terrain_z8_179_94.png",
+      "bytes": 89822,
+      "sha256": "17628e18788d59ddc4d6ad55021168b74c5875d09f5fb65c50429c5b846f71d7"
+    },
+    {
+      "path": "sources/terrain_z8_179_95.png",
+      "bytes": 93520,
+      "sha256": "12a5abeeb0620967c1307952da9bf9816ba8a9ce761c746bdcb26dd6ff6360e7"
+    },
+    {
+      "path": "sources/terrain_z8_179_96.png",
+      "bytes": 76778,
+      "sha256": "cd30bdfb0deab9cde65707490a55be73b76633b25cfbd4c72f904c1edf7932de"
+    },
+    {
+      "path": "sources/terrain_z8_180_86.png",
+      "bytes": 51546,
+      "sha256": "de06725ab6c8cf13f9ac857be71c14104345dabd8224949d6fba89a613954111"
+    },
+    {
+      "path": "sources/terrain_z8_180_87.png",
+      "bytes": 61241,
+      "sha256": "2cbf84eef9e250142626d5227cd9565418e843a8e3c8164e63cd3ecca6674226"
+    },
+    {
+      "path": "sources/terrain_z8_180_88.png",
+      "bytes": 63954,
+      "sha256": "4f7a47da4a07ee010e6d5c0c6529985f599f480dd078b9f433d31a7446548330"
+    },
+    {
+      "path": "sources/terrain_z8_180_89.png",
+      "bytes": 50308,
+      "sha256": "667ce31729bde5ce745011940a8b52f2fe92f2268822b1bbc9c677f23b96e596"
+    },
+    {
+      "path": "sources/terrain_z8_180_90.png",
+      "bytes": 38979,
+      "sha256": "0c19fbc2b7c0c89f02d4cc53a0439a07a6fcc864de825857e6b9fd0b73f97060"
+    },
+    {
+      "path": "sources/terrain_z8_180_91.png",
+      "bytes": 33860,
+      "sha256": "399e3e2a2671a947a09f07e1926c41e25f224fa23856cbce305c6669768eea90"
+    },
+    {
+      "path": "sources/terrain_z8_180_92.png",
+      "bytes": 54431,
+      "sha256": "91e503a08956a00b81ec094112d887fab8e08ce77b49fd0d9d3ddbdf5d604b05"
+    },
+    {
+      "path": "sources/terrain_z8_180_93.png",
+      "bytes": 52878,
+      "sha256": "1e08186c6ec36f4f849a9eae15221c9c6a490d2e8edb6f0f7f684bbe5feb4af8"
+    },
+    {
+      "path": "sources/terrain_z8_180_94.png",
+      "bytes": 84122,
+      "sha256": "83ec3519db30d3e9a6e9bec951d7f4679f14ec0c31f5d2d3cad29436d3301aa3"
+    },
+    {
+      "path": "sources/terrain_z8_180_95.png",
+      "bytes": 100281,
+      "sha256": "faa5d69ba2b4965738830ded3f2bbb3c2125b6b108a834a6defb4c29ff0993d1"
+    },
+    {
+      "path": "sources/terrain_z8_180_96.png",
+      "bytes": 101817,
+      "sha256": "f08693f11ee2e1ee73bbb76f296d814c1a1be37c591d7fd492813597ca9f7572"
+    },
+    {
+      "path": "sources/terrain_z8_181_86.png",
+      "bytes": 57169,
+      "sha256": "759d7a8a57daf158db2523c13c6205b228e335a413d8bf8f4aea2824984e0513"
+    },
+    {
+      "path": "sources/terrain_z8_181_87.png",
+      "bytes": 65529,
+      "sha256": "e0553b964258f8aec9899567f4af7506d12003a38ae35a379db2ae2c257bbac8"
+    },
+    {
+      "path": "sources/terrain_z8_181_88.png",
+      "bytes": 70012,
+      "sha256": "b8a5466d01bf824f431a5dc25c76f505529dcbf2aab13752b7e3989ae15d80d2"
+    },
+    {
+      "path": "sources/terrain_z8_181_89.png",
+      "bytes": 51360,
+      "sha256": "93c632cca2f2124e2b457b9e0aad5f73badf4884b72bef2613d00ec33cee31a7"
+    },
+    {
+      "path": "sources/terrain_z8_181_90.png",
+      "bytes": 27516,
+      "sha256": "581ebe4f4dd9d6830b111d0fb3355fa1cdf34472b84ae5420ecc31424eb6f6c9"
+    },
+    {
+      "path": "sources/terrain_z8_181_91.png",
+      "bytes": 33338,
+      "sha256": "05f7e1872074b2390bd31baa3db80925ac4c8909511be9451d851e2e19deb533"
+    },
+    {
+      "path": "sources/terrain_z8_181_92.png",
+      "bytes": 45007,
+      "sha256": "a850c3e3540497bd21d87de632d213b4ac0e260052a233d11b462772f78ea31f"
+    },
+    {
+      "path": "sources/terrain_z8_181_93.png",
+      "bytes": 68981,
+      "sha256": "597602e775697176e2ddf13f3c1d8444cf35a25dee0c41d4dc3ce9f662b63868"
+    },
+    {
+      "path": "sources/terrain_z8_181_94.png",
+      "bytes": 90873,
+      "sha256": "dc14fd5d7546b17f68b308deb8a0668f20e1d88fa366f059f29733cda5ab9545"
+    },
+    {
+      "path": "sources/terrain_z8_181_95.png",
+      "bytes": 91711,
+      "sha256": "3241d3b9e8f98df8533a85d24b364a53c57ad8d829b054eff31bbad147d3633f"
+    },
+    {
+      "path": "sources/terrain_z8_181_96.png",
+      "bytes": 95281,
+      "sha256": "b6661383c62400f64e7f2435b6470b73ebb0e088504f857339197ce814c54aa1"
+    },
+    {
+      "path": "sources/terrain_z8_182_86.png",
+      "bytes": 58102,
+      "sha256": "3c6ca40af4f70566784c7acaae01c416afbd445089709be54d4b82f111709a6e"
+    },
+    {
+      "path": "sources/terrain_z8_182_87.png",
+      "bytes": 69509,
+      "sha256": "3a3b0a2057ddbdaab9eec09fcdc85ca3b223545285412ea9fce51c621f9346cc"
+    },
+    {
+      "path": "sources/terrain_z8_182_88.png",
+      "bytes": 59510,
+      "sha256": "7354ca8559272ecca27aa8b93097dd85f4c3b957eb8b1bcfa0a14f07499af8e6"
+    },
+    {
+      "path": "sources/terrain_z8_182_89.png",
+      "bytes": 52942,
+      "sha256": "33dfde1fa58072f430b860526a68346bbc931b338fce7858d6b08cc87c66842c"
+    },
+    {
+      "path": "sources/terrain_z8_182_90.png",
+      "bytes": 44600,
+      "sha256": "e844c0715fec1e10b980febe0d98ffa60674aae37e7881500c4a5e40e16d42da"
+    },
+    {
+      "path": "sources/terrain_z8_182_91.png",
+      "bytes": 40156,
+      "sha256": "cde2a06ff930550f96be46c596d23a4deb6951425b5413f3b47c1a11149c41f1"
+    },
+    {
+      "path": "sources/terrain_z8_182_92.png",
+      "bytes": 53789,
+      "sha256": "fb3496dc3f1618c05cc01eba2ac07ae7d0f07ce218ec6413dc18992d5693cd77"
+    },
+    {
+      "path": "sources/terrain_z8_182_93.png",
+      "bytes": 61986,
+      "sha256": "7330446027d0dfe2e9146b12345f19f01ec30d8b45d3508ac81501b38e574894"
+    },
+    {
+      "path": "sources/terrain_z8_182_94.png",
+      "bytes": 73175,
+      "sha256": "b4a22608e2222f1a0530b10f8b5e1f4f0151a297590ca15512ba9a4c36989d22"
+    },
+    {
+      "path": "sources/terrain_z8_182_95.png",
+      "bytes": 98214,
+      "sha256": "8a5f32046cacd3ea303ca2d2b6ee58af4ec76894e52ec5e158d3fe081c9845c4"
+    },
+    {
+      "path": "sources/terrain_z8_182_96.png",
+      "bytes": 91306,
+      "sha256": "ea69f69b974bee791a3025bf1b78cd3d6f69f2fea1de4cf19984bbc75451d588"
+    },
+    {
+      "path": "sources/terrain_z8_183_86.png",
+      "bytes": 47912,
+      "sha256": "751e74f2e3615e1a7933dfbc37675b461d06f09de1bc4d0f56b413e6bbfbb894"
+    },
+    {
+      "path": "sources/terrain_z8_183_87.png",
+      "bytes": 61235,
+      "sha256": "9977463d9a78e5e826e825081ac4d1ca8204fc398994f77f290e6d0e536fbc2b"
+    },
+    {
+      "path": "sources/terrain_z8_183_88.png",
+      "bytes": 53922,
+      "sha256": "180528c5567347024755dc5bc2ae6f3ac7797c24b253d9acd88ac00fe68685ea"
+    },
+    {
+      "path": "sources/terrain_z8_183_89.png",
+      "bytes": 53034,
+      "sha256": "aaf03c5129192e4beb63dfe397148460b811c065d2b1af10a9b1a166ab17a797"
+    },
+    {
+      "path": "sources/terrain_z8_183_90.png",
+      "bytes": 38790,
+      "sha256": "0b598851414ccce02fcb0e3eb58950e04315edb81f4345fa6c484be5d2ff0fbf"
+    },
+    {
+      "path": "sources/terrain_z8_183_91.png",
+      "bytes": 50425,
+      "sha256": "1a239e0a8e428191776ca787600f8df15a76b14101c86cca4671979c7937257a"
+    },
+    {
+      "path": "sources/terrain_z8_183_92.png",
+      "bytes": 72779,
+      "sha256": "a5db8815217a6b13f403da903411ed0f3536016f9d6ed63b187cddf59f8ae3e5"
+    },
+    {
+      "path": "sources/terrain_z8_183_93.png",
+      "bytes": 69169,
+      "sha256": "b485199d3b19bdb7ced748874b909009ae945b97d608eadd5708dd41feb8f1db"
+    },
+    {
+      "path": "sources/terrain_z8_183_94.png",
+      "bytes": 75690,
+      "sha256": "26e68d3868e87c8214a669485cff88d0c2b87f83745340847557c41f200920c1"
+    },
+    {
+      "path": "sources/terrain_z8_183_95.png",
+      "bytes": 100089,
+      "sha256": "e6b504a8c28e182894bdc7ef4b1d38bc858b42d0db8abf28d4be0758579a34ea"
+    },
+    {
+      "path": "sources/terrain_z8_183_96.png",
+      "bytes": 85045,
+      "sha256": "47b35156fa6647568b39d5bfc8b491cd27153f694f769f9f129d693566ea2f17"
+    },
+    {
+      "path": "sources/terrain_z8_184_86.png",
+      "bytes": 42751,
+      "sha256": "2e6eb89d0104b263bc70373c9fd6eeb8b71b6c0a8ee06a3e30207f8af5274d30"
+    },
+    {
+      "path": "sources/terrain_z8_184_87.png",
+      "bytes": 55926,
+      "sha256": "99ca9a7f6b10855a28cb08dd6135963f384e8803e3d99b3eaaad1df1216a4cee"
+    },
+    {
+      "path": "sources/terrain_z8_184_88.png",
+      "bytes": 63151,
+      "sha256": "fcc85b40d5419709876baffbd963988a036613de983d608065a5007591eea791"
+    },
+    {
+      "path": "sources/terrain_z8_184_89.png",
+      "bytes": 49414,
+      "sha256": "75627cd220467645f3ca90c50e09b94b48c34e19560bdcb004e22ce0c01d9c67"
+    },
+    {
+      "path": "sources/terrain_z8_184_90.png",
+      "bytes": 43309,
+      "sha256": "6967f9be5dec6829a2b0ef2c8ff3de44b10155666a751bebfce13d9dedb43949"
+    },
+    {
+      "path": "sources/terrain_z8_184_91.png",
+      "bytes": 57645,
+      "sha256": "b0f0302cd2d03853907f13f60b9fe91b4852f226aa13c0a7cabf407203fe7475"
+    },
+    {
+      "path": "sources/terrain_z8_184_92.png",
+      "bytes": 91229,
+      "sha256": "2302975aef61be6ba51185881b224ad9ffaa6a9eb6bfb7b77c0da551ce6f7367"
+    },
+    {
+      "path": "sources/terrain_z8_184_93.png",
+      "bytes": 66263,
+      "sha256": "446767cf9fdc38478b997d0cdc2a784fa3472620069cab2e2e41a7c84ca552b7"
+    },
+    {
+      "path": "sources/terrain_z8_184_94.png",
+      "bytes": 95265,
+      "sha256": "e919b087569abf3783eaf0f9d05c3c7c29f4c2b22229e8f7646d81b37910b6ab"
+    },
+    {
+      "path": "sources/terrain_z8_184_95.png",
+      "bytes": 86074,
+      "sha256": "f02ec083b10e743cfbc4b2fe6235ed61f196a3ab4f4c1ca70f2581878b90b76e"
+    },
+    {
+      "path": "sources/terrain_z8_184_96.png",
+      "bytes": 59286,
+      "sha256": "87d6178833d202863f145ac8ccf6028da4b021a710ae62e25054d6cecf9e530c"
+    },
+    {
+      "path": "sources/terrain_z8_185_86.png",
+      "bytes": 47017,
+      "sha256": "bb158599a544b0880cdce72eb5c5687871e9ae3b4633c44429b80437e0480a70"
+    },
+    {
+      "path": "sources/terrain_z8_185_87.png",
+      "bytes": 58818,
+      "sha256": "51e19b9d500d52846a15b9aab32a9ec332b1bf0a8e5866893a06a5a544ce8cbd"
+    },
+    {
+      "path": "sources/terrain_z8_185_88.png",
+      "bytes": 67477,
+      "sha256": "60918a6678801a0d6f05e89febb7612f844d823daf43e94296c1b8b330891c22"
+    },
+    {
+      "path": "sources/terrain_z8_185_89.png",
+      "bytes": 70350,
+      "sha256": "00842c20f6eaf54f2d21ca8321b0bc8023ba95bb8f3fb2a77e7e88fd3fe67d91"
+    },
+    {
+      "path": "sources/terrain_z8_185_90.png",
+      "bytes": 38411,
+      "sha256": "f27ee40b27bd8237384b9b9df39c761e739dfbf3e7ed5fd59957f7762e60d8fd"
+    },
+    {
+      "path": "sources/terrain_z8_185_91.png",
+      "bytes": 88959,
+      "sha256": "2a68ff450f2d1a2c9213462955053334e9c9624e446bbb7936a02b6601d9e9bd"
+    },
+    {
+      "path": "sources/terrain_z8_185_92.png",
+      "bytes": 87300,
+      "sha256": "5a86e8465657ef15a175d3d20214692b73e25f4bf4063108a2a999e335d2b76d"
+    },
+    {
+      "path": "sources/terrain_z8_185_93.png",
+      "bytes": 72775,
+      "sha256": "43ad334975f4054fde2129adfe6400a46d3ca502b0282c7ca22b1b07741c19b9"
+    },
+    {
+      "path": "sources/terrain_z8_185_94.png",
+      "bytes": 94884,
+      "sha256": "7c65a1bca47054df885c6444c7fac4a69d8f1318b01cbb793193db48895dc8f7"
+    },
+    {
+      "path": "sources/terrain_z8_185_95.png",
+      "bytes": 67923,
+      "sha256": "cbcdb064d6a4a63228c5effc725e1ec242fb00e6540e7e6e5658c4cd102b7964"
+    },
+    {
+      "path": "sources/terrain_z8_185_96.png",
+      "bytes": 38405,
+      "sha256": "d099a17af33bb7798a582aec5f0cbcb53eb278661a956bd7ad6069de56a6e259"
+    },
+    {
+      "path": "sources/terrain_z8_186_86.png",
+      "bytes": 70309,
+      "sha256": "3aae910cf701f7dd95e51617bf3071e38d7330d6fdb9a52a8974ad69e34968a1"
+    },
+    {
+      "path": "sources/terrain_z8_186_87.png",
+      "bytes": 80215,
+      "sha256": "a4594ca5eefeac90d5b1767026f65ace5bfbf0b3b9fa86b9ae08fea4eea95635"
+    },
+    {
+      "path": "sources/terrain_z8_186_88.png",
+      "bytes": 57723,
+      "sha256": "9a47adccc08ccdf668b30661e9757088d3bbdb72946fb966ba949a4ea7f4775d"
+    },
+    {
+      "path": "sources/terrain_z8_186_89.png",
+      "bytes": 78359,
+      "sha256": "204e555b5ea1b6917a48c4ac2d37b1b0dbdaae218aaf02cdf19f43ad2da5d129"
+    },
+    {
+      "path": "sources/terrain_z8_186_90.png",
+      "bytes": 53002,
+      "sha256": "b22aa2d706dfe91615d30db92fa630b10cae220e1d56e41e8eeec653f86d72e0"
+    },
+    {
+      "path": "sources/terrain_z8_186_91.png",
+      "bytes": 79301,
+      "sha256": "5d0bdd48edb1160b1dc1401fc8e27bc07a2e2f3a49c0354418bc0385a8c4ff5c"
+    },
+    {
+      "path": "sources/terrain_z8_186_92.png",
+      "bytes": 72907,
+      "sha256": "286fa475e6bbdf0bb2801c2f26aed97e2288e5b1226c6310d82f00babd7e1f78"
+    },
+    {
+      "path": "sources/terrain_z8_186_93.png",
+      "bytes": 84318,
+      "sha256": "890aa01e6383f835dfd611a3db18631cd18578083a6caf4a9b2d2e59a81ea424"
+    },
+    {
+      "path": "sources/terrain_z8_186_94.png",
+      "bytes": 100576,
+      "sha256": "42a6446660146776c670afcdd356fa58232057b147e217972060a60947ae28e7"
+    },
+    {
+      "path": "sources/terrain_z8_186_95.png",
+      "bytes": 54903,
+      "sha256": "63fd2f9a0a0ae86c69d8024425566bf776911e29f857fe079ff5f16a5e3306d4"
+    },
+    {
+      "path": "sources/terrain_z8_186_96.png",
+      "bytes": 42306,
+      "sha256": "a5f47d19e918b856e888a86ef775abe1908522fde95755fb6955d08e389c7ad6"
+    },
+    {
+      "path": "sources/terrain_z8_187_86.png",
+      "bytes": 93058,
+      "sha256": "c925afdd07b42719344b516f5048a107e03214e1aa9e4c626bc130929e1b4e23"
+    },
+    {
+      "path": "sources/terrain_z8_187_87.png",
+      "bytes": 84345,
+      "sha256": "26fb7602f66cf5e5da6e86d0760b9e0757e26ec9f15be8996da7ca908f10f955"
+    },
+    {
+      "path": "sources/terrain_z8_187_88.png",
+      "bytes": 47547,
+      "sha256": "efb76dc2b2380475381b105db3a3a8c0b5d490ce90f32d64e0f66485d205a75b"
+    },
+    {
+      "path": "sources/terrain_z8_187_89.png",
+      "bytes": 62760,
+      "sha256": "82d71643fd0f81d098d03bc8f1d8d5c49dc0cf0de376c36ba0fddc7b9823957d"
+    },
+    {
+      "path": "sources/terrain_z8_187_90.png",
+      "bytes": 68125,
+      "sha256": "6bda2c441c47bb1c5d35f97459e56869f663ed192d4f5370f6c93bce8631769b"
+    },
+    {
+      "path": "sources/terrain_z8_187_91.png",
+      "bytes": 78464,
+      "sha256": "9e3f44ec29229a1d5e2511d59eb5985280c753988733800b715f452051abf8a7"
+    },
+    {
+      "path": "sources/terrain_z8_187_92.png",
+      "bytes": 64893,
+      "sha256": "6efdc01269cc67ffce500c7abb77205ac9316fceb1604b0a2757cebbe34917b9"
+    },
+    {
+      "path": "sources/terrain_z8_187_93.png",
+      "bytes": 97646,
+      "sha256": "ef4971968080d46f38e87c90ec3c785c210dc66b1dfc5cc64a252cd53fc82409"
+    },
+    {
+      "path": "sources/terrain_z8_187_94.png",
+      "bytes": 90870,
+      "sha256": "7c82dcb6fdc895a69d1c06c3d88183824b9b0671f15c3497920389801b02e154"
+    },
+    {
+      "path": "sources/terrain_z8_187_95.png",
+      "bytes": 43970,
+      "sha256": "48ba8295f2e2d0681a889fbc9a86a051ac142004f9dd87a2d07a08d32b3d489c"
+    },
+    {
+      "path": "sources/terrain_z8_187_96.png",
+      "bytes": 49873,
+      "sha256": "d75a1fbb13af2269f1b4d563e4ac937322dcd7c227ef8eacbee22bb6d84e29a8"
+    },
+    {
+      "path": "sources/terrain_z8_188_86.png",
+      "bytes": 93501,
+      "sha256": "81066ed436939dc277616f7e2add0f7aebcdf4a8e5c2f9d763242e66780dcf14"
+    },
+    {
+      "path": "sources/terrain_z8_188_87.png",
+      "bytes": 94599,
+      "sha256": "82fa573f4a16ef16591d1a2e10afded5ee50a53c88c487f4edf542c444b44064"
+    },
+    {
+      "path": "sources/terrain_z8_188_88.png",
+      "bytes": 74611,
+      "sha256": "ae4f7326593520a74670c269b2bf7836b5a45201afc633157c361091bb4e604d"
+    },
+    {
+      "path": "sources/terrain_z8_188_89.png",
+      "bytes": 65906,
+      "sha256": "5be1b261eef5841af944e97f6e832dc9b94036ab3fdfc62a6678dc571909ab94"
+    },
+    {
+      "path": "sources/terrain_z8_188_90.png",
+      "bytes": 74537,
+      "sha256": "b211f3ff0e123948e886b1b5473e814997223c9a3e00aff999179f638ee1934a"
+    },
+    {
+      "path": "sources/terrain_z8_188_91.png",
+      "bytes": 52723,
+      "sha256": "652405b9676bd987076f61d4ee23e4d260b566893627debec78276e5ea57ccdb"
+    },
+    {
+      "path": "sources/terrain_z8_188_92.png",
+      "bytes": 49102,
+      "sha256": "65d99666e415684f99d352efd8349684bb15027068ea0926124273308183b1ed"
+    },
+    {
+      "path": "sources/terrain_z8_188_93.png",
+      "bytes": 101131,
+      "sha256": "da5e83ff85808aac4cb218836e769952ad21052be7cfe3a96b9c1a52fae9ddb6"
+    },
+    {
+      "path": "sources/terrain_z8_188_94.png",
+      "bytes": 95002,
+      "sha256": "5793a8d08cc6396bde7393779941d0c051bfcf4835a282c467e9b9e5c080115c"
+    },
+    {
+      "path": "sources/terrain_z8_188_95.png",
+      "bytes": 41386,
+      "sha256": "e59b201bdffe4a5686784df392932a2a6ae8d180f35523e8ef6dee71ffaf7ea6"
+    },
+    {
+      "path": "sources/terrain_z8_188_96.png",
+      "bytes": 60444,
+      "sha256": "fa352c377c7861b69272685e94c2318edb0b3b3ec932d243d304375c33604fcc"
+    },
+    {
+      "path": "sources/terrain_z8_189_86.png",
+      "bytes": 98784,
+      "sha256": "fbda0dbcb98149c1843aedf7e2e650a851e2f9d173b34037c43109e93e0a1cac"
+    },
+    {
+      "path": "sources/terrain_z8_189_87.png",
+      "bytes": 98019,
+      "sha256": "c3a8f26961eabb3592586b6f7cdf5207b1bf4f63c1fddf2f6ae0dac85d6a71e4"
+    },
+    {
+      "path": "sources/terrain_z8_189_88.png",
+      "bytes": 84090,
+      "sha256": "16c0b85a13f3de8dc28c70d912813cf521284bbc01aaf20a5657ffd8dbd3f1f6"
+    },
+    {
+      "path": "sources/terrain_z8_189_89.png",
+      "bytes": 63899,
+      "sha256": "62a6a533cd72bf91d00dc64218fd91f1d36b9b9cc6420ea7e4615a27a43a7334"
+    },
+    {
+      "path": "sources/terrain_z8_189_90.png",
+      "bytes": 57402,
+      "sha256": "604dd44b3202cacbd9d82e63cc324f6b0a0d779ccfdd0270aaa68995e9a71350"
+    },
+    {
+      "path": "sources/terrain_z8_189_91.png",
+      "bytes": 52712,
+      "sha256": "5fe8743843bcd74e0fe86831697e0006008fec58efae24c8d6a6a58d179beaca"
+    },
+    {
+      "path": "sources/terrain_z8_189_92.png",
+      "bytes": 46184,
+      "sha256": "8b450ce5eebf188b9f314b0f7781e992574c977b433e014a531e4dc3ac5929d4"
+    },
+    {
+      "path": "sources/terrain_z8_189_93.png",
+      "bytes": 97227,
+      "sha256": "3b0ac6b6e49cf64d439482c57494f2f3e4bd4a88ea7bd02e61da8b5868f25287"
+    },
+    {
+      "path": "sources/terrain_z8_189_94.png",
+      "bytes": 84640,
+      "sha256": "dd4762e67836ee37ead647257258a102567044fd7a6f7ec0baa4653543c6f400"
+    },
+    {
+      "path": "sources/terrain_z8_189_95.png",
+      "bytes": 55400,
+      "sha256": "c84844129e79adbb739aa109660ca6175140fc6ca1fc6c6bad0649365fcb29de"
+    },
+    {
+      "path": "sources/terrain_z8_189_96.png",
+      "bytes": 71562,
+      "sha256": "3874a03d442d2c47b796e95490d7ad0a2e737c51781495f36281bea7a9cb9833"
+    },
+    {
+      "path": "sources/terrain_z8_190_86.png",
+      "bytes": 93144,
+      "sha256": "db2b93f1d171afcdce116c1a08b83bdcf85d97f30cc6e3f4b542b7ae73c79aeb"
+    },
+    {
+      "path": "sources/terrain_z8_190_87.png",
+      "bytes": 93894,
+      "sha256": "f80483dec50c7a5a591d6e4199ffdc5cdd962c97f314ed7b1889235d8f3b0e10"
+    },
+    {
+      "path": "sources/terrain_z8_190_88.png",
+      "bytes": 96711,
+      "sha256": "b90d7b017b2570ca3660e9f5b62a395e219dc2bfc6aae21c9f16f56ce0104de0"
+    },
+    {
+      "path": "sources/terrain_z8_190_89.png",
+      "bytes": 60586,
+      "sha256": "7807550b2c8cd14e28128065ee07756bb5f59c4c0dc0aafbcf049efcc7a470cb"
+    },
+    {
+      "path": "sources/terrain_z8_190_90.png",
+      "bytes": 52509,
+      "sha256": "a2fdcc884ac30a30d6b150175966dca842bff53172047c2f5ed886a2027d951e"
+    },
+    {
+      "path": "sources/terrain_z8_190_91.png",
+      "bytes": 57878,
+      "sha256": "98da7435ce2563a016a532207e3e4e36d75e24b008513fda52249ab525ae19d7"
+    },
+    {
+      "path": "sources/terrain_z8_190_92.png",
+      "bytes": 50475,
+      "sha256": "73c5b9cbce8eab55a72be6c702d2547e4defb56324212282fba7f4b68108e649"
+    },
+    {
+      "path": "sources/terrain_z8_190_93.png",
+      "bytes": 86515,
+      "sha256": "23e75bac54ae98f76755a92d9b9ef546d54641232ea38f037a668958f02aac56"
+    },
+    {
+      "path": "sources/terrain_z8_190_94.png",
+      "bytes": 82429,
+      "sha256": "d1214c56e9f03b09c5aeead8a320912b2ffbba3ec9ab3a3c073565084ae5de43"
+    },
+    {
+      "path": "sources/terrain_z8_190_95.png",
+      "bytes": 71166,
+      "sha256": "116f442c2a53812d349af80dfde842db77089efec99a3858b51735fdf3205e99"
+    },
+    {
+      "path": "sources/terrain_z8_190_96.png",
+      "bytes": 54913,
+      "sha256": "9e761d02fd2a7f74d9d777c4a3f6afa51d76e41e63e876a00f9a3492cc95d2c5"
+    },
+    {
+      "path": "数据说明.txt",
+      "bytes": 13574,
+      "sha256": "3f7c332bbebba882c9a63389d6fb5a924f568f3f9e490c8c200327e8c427b88f"
+    }
+  ],
+  "note": "Manifest itself excluded from hash list."
+}

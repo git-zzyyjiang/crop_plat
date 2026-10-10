@@ -1,0 +1,125 @@
+<template>
+  <div id="bottom_right">
+    <!-- 框选开启时把「停止框选」也点亮成蓝底 -->
+    <module-tabs v-model="tab" :tabs="tabs" :active-id="roiActive ? 'identify' : ''"/>
+
+    <crops-type v-if="tab === 'visual'"/>
+    <!-- 这版数据是逐年的，时间轴只选年份；农田页仍然用按天的时间轴 -->
+    <crop-year-timeline v-if="tab === 'visual' || tab === 'analysis'"/>
+    <crop-analysis-panel v-if="tab === 'visual' || tab === 'analysis'" :tab="panelTab" hide-tabs/>
+    <rotation-type v-if="tab === 'series'"/>
+    <!-- 种植分析的稳定性图例，照原型放在右下 -->
+    <legend-card
+      v-if="tab === 'analysis'"
+      title="种植稳定性"
+      :items="stabilityLegend"
+      note="数据待接入：按地块统计 2024—2026 作物类型改变次数。"
+    />
+    <!-- 框选后的识别进度条，刚好在统计完成时走满 -->
+    <scan-progress/>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { View } from 'ol'
+import useMapStore from '@/stores/map'
+import ModuleTabs from '@/components/part/module-tabs.vue'
+import CropsType from '@/components/part/crops-type.vue'
+import CropYearTimeline from '@/components/part/crop-year-timeline.vue'
+import CropAnalysisPanel from '@/components/part/crop-analysis-panel.vue'
+import RotationType from '@/components/part/rotation-type.vue'
+import LegendCard from '@/components/part/legend-card.vue'
+import ScanProgress from '@/components/part/scan-progress.vue'
+import PiIcon from '@/components/part/pi-icon.vue'
+
+const store = useMapStore()
+const { map, parcelRoiState } = storeToRefs(store)
+
+// 二级模块，名称与 figma 原型一致。
+// 「交互识别」本身就是框选开关，框选开着的时候按钮文案变成「停止框选」
+const tabs = computed(() => [
+  { id: 'identify', label: roiActive.value ? '停止框选' : '交互识别', icon: 'sprout' },
+  { id: 'visual', label: '作物类型可视化', icon: 'layers' },
+  { id: 'series', label: '作物时间序列', icon: 'chart' },
+  { id: 'analysis', label: '种植分析', icon: 'asterisk' }
+])
+const tab = ref('visual')
+
+// 二级模块 -> 分析面板内部页签
+const PANEL_TAB = { visual: 'visual', series: 'series', analysis: 'analysis' }
+const panelTab = computed(() => PANEL_TAB[tab.value] || 'visual')
+
+const roiActive = computed(() => parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied')
+const toggleRoi = () => store.toggleParcelRoi()
+
+// 「交互识别」页签本身就是框选开关：点一下开始/结束框选，
+// 视图落到「作物类型可视化」（这两个模块是一体的）
+watch(tab, value => {
+  if (value === 'identify') {
+    store.toggleParcelRoi()
+    tab.value = 'visual'
+    return
+  }
+  // 离开「交互识别/作物类型可视化」就不再识别框选：整个撤掉，回到默认视图
+  if (value !== 'visual' && (parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied')) {
+    store.clearParcelRoi()
+  }
+})
+
+// 原型里的稳定性分级图例
+const stabilityLegend = [
+  { label: '0 次（稳定）', color: '#58c98a' },
+  { label: '1 — 2 次', color: '#f2c14e' },
+  { label: '3 次及以上', color: '#e2574c' }
+]
+
+const setMapView = () => {
+  if (!map.value || !map.value.setView) {
+    setTimeout(setMapView, 50)
+    return
+  }
+
+  map.value.setView(new View({
+    center: [78.25, 45.72],
+    zoom: 7.15,
+    projection: 'EPSG:4326'
+  }))
+
+  store.clearMap(0)
+  // 时空数据页勾选的图层不要跟着过来
+  store.clearTemporalLayers()
+  store.addBasicLayer('World_Imagery') // 卫星底图
+  store.addBasinBoundaryLayer()
+  // clearMap 会把子组件（crops-type）刚挂上的作物图层一起清掉，
+  // 所以视图初始化完再补一次加载；addCropLayer 内部会先移除旧层，不会重复。
+  store.reloadCropLayer()
+}
+
+onMounted(setMapView)
+onBeforeUnmount(() => {
+  store.cancelCropAnalysisRequest()
+  store.clearCropAnalysisBlink()
+})
+</script>
+
+<style scoped>
+.ident-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ident-inline .ident-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.ident-inline-hint {
+  color: var(--ink-300);
+  font-size: 11px;
+  line-height: 1.4;
+}
+</style>

@@ -1,0 +1,37 @@
+<PAMDataset>
+  <Metadata>
+    <MDI key="aggregation">sum over all available UTC days</MDI>
+    <MDI key="days">365</MDI>
+    <MDI key="downscaling">none</MDI>
+    <MDI key="native_resolution_degrees">0.25</MDI>
+    <MDI key="period_end">2025-12-31</MDI>
+    <MDI key="period_start">2025-01-01</MDI>
+    <MDI key="source">Copernicus ERA5 via Open-Meteo AWS open data</MDI>
+    <MDI key="temporal_complete">True</MDI>
+    <MDI key="units">mm</MDI>
+    <MDI key="year">2025</MDI>
+  </Metadata>
+  <PAMRasterBand band="1">
+    <Histograms>
+      <HistItem>
+        <HistMin>4.599999904632568</HistMin>
+        <HistMax>2277.199951171875</HistMax>
+        <BucketCount>256</BucketCount>
+        <IncludeOutOfRange>1</IncludeOutOfRange>
+        <Approximate>0</Approximate>
+        <HistCounts>99|72|45|18|11|18|23|25|20|32|34|56|108|128|82|93|71|80|65|50|63|55|44|60|46|42|40|43|52|60|87|77|58|58|36|55|41|28|45|40|52|46|29|29|24|23|18|25|20|24|21|15|22|10|21|12|27|19|22|12|16|23|12|24|17|18|10|11|16|14|9|11|13|6|11|12|14|15|5|8|8|10|9|11|15|10|11|9|11|11|8|11|14|8|7|5|8|9|5|11|11|8|1|2|4|7|6|5|6|4|3|3|3|3|7|6|5|8|4|3|2|4|5|4|2|4|3|5|3|0|6|2|5|6|3|2|3|2|3|1|1|1|4|4|3|6|1|2|1|2|2|2|0|2|1|0|2|2|0|2|2|0|0|3|0|2|1|1|2|0|2|0|1|1|2|1|0|1|1|0|0|1|1|1|0|1|0|2|1|0|1|0|0|0|0|0|1|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1</HistCounts>
+      </HistItem>
+    </Histograms>
+    <Metadata>
+      <MDI key="STATISTICS_COVARIANCES">94568.55006532783</MDI>
+      <MDI key="STATISTICS_EXCLUDEDVALUES"></MDI>
+      <MDI key="STATISTICS_MAXIMUM">2277.1999511719</MDI>
+      <MDI key="STATISTICS_MEAN">358.72752637183</MDI>
+      <MDI key="STATISTICS_MEDIAN">271.964700</MDI>
+      <MDI key="STATISTICS_MINIMUM">4.5999999046326</MDI>
+      <MDI key="STATISTICS_SKIPFACTORX">1</MDI>
+      <MDI key="STATISTICS_SKIPFACTORY">1</MDI>
+      <MDI key="STATISTICS_STDDEV">307.51999945585</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>

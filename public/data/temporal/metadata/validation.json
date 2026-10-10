@@ -1,0 +1,267 @@
+{
+  "date": "2026-10-06",
+  "passed": true,
+  "vectors": [
+    {
+      "file": "01_basemap/lakes.geojson",
+      "features": 18,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "01_basemap/mountain_ranges.geojson",
+      "features": 7,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "01_basemap/rivers.geojson",
+      "features": 16,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "02_boundaries/countries.geojson",
+      "features": 258,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "02_boundaries/country_borders.geojson",
+      "features": 515,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "02_boundaries/province_borders.geojson",
+      "features": 3860,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "02_boundaries/provinces.geojson",
+      "features": 1799,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "05_weather/2024/precipitation_2024.geojson",
+      "features": 3321,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "05_weather/2024/temperature_2024.geojson",
+      "features": 3321,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "05_weather/2025/precipitation_2025.geojson",
+      "features": 3321,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "05_weather/2025/temperature_2025.geojson",
+      "features": 3321,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "05_weather/2026/precipitation_2026.geojson",
+      "features": 3321,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "05_weather/2026/temperature_2026.geojson",
+      "features": 3321,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "metadata/display_extent.geojson",
+      "features": 1,
+      "all_geometries_valid": true
+    },
+    {
+      "file": "01_basemap/rivers_major.geojson",
+      "features": 4633,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    },
+    {
+      "file": "01_basemap/rivers_named.geojson",
+      "features": 16,
+      "all_geometries_valid": true,
+      "shapefile_count_geometry_attributes_match": true
+    }
+  ],
+  "rasters": [
+    {
+      "file": "03_terrain/elevation_m.tif",
+      "size": [
+        4000,
+        2000
+      ],
+      "bounds": [
+        68.0,
+        40.0,
+        88.0,
+        50.0
+      ],
+      "cog": true,
+      "valid_pixels": 8000000,
+      "minimum": -693.3900146484375,
+      "maximum": 7181.42041015625,
+      "overviews": [
+        2,
+        4,
+        8,
+        16
+      ]
+    },
+    {
+      "file": "03_terrain/slope_deg.tif",
+      "size": [
+        4000,
+        2000
+      ],
+      "bounds": [
+        68.0,
+        40.0,
+        88.0,
+        50.0
+      ],
+      "cog": true,
+      "valid_pixels": 8000000,
+      "minimum": 0.0,
+      "maximum": 60.369083404541016,
+      "overviews": [
+        2,
+        4,
+        8,
+        16
+      ]
+    },
+    {
+      "file": "05_weather/2024/precipitation_2024.tif",
+      "size": [
+        81,
+        41
+      ],
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "cog": true,
+      "valid_pixels": 3321,
+      "minimum": 13.300000190734863,
+      "maximum": 2636.300048828125,
+      "overviews": []
+    },
+    {
+      "file": "05_weather/2024/temperature_2024.tif",
+      "size": [
+        81,
+        41
+      ],
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "cog": true,
+      "valid_pixels": 3321,
+      "minimum": -13.073969841003418,
+      "maximum": 17.546306610107422,
+      "overviews": []
+    },
+    {
+      "file": "05_weather/2025/precipitation_2025.tif",
+      "size": [
+        81,
+        41
+      ],
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "cog": true,
+      "valid_pixels": 3321,
+      "minimum": 4.599999904632568,
+      "maximum": 2277.199951171875,
+      "overviews": []
+    },
+    {
+      "file": "05_weather/2025/temperature_2025.tif",
+      "size": [
+        81,
+        41
+      ],
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "cog": true,
+      "valid_pixels": 3321,
+      "minimum": -12.904012680053711,
+      "maximum": 18.221370697021484,
+      "overviews": []
+    },
+    {
+      "file": "05_weather/2026/precipitation_2026.tif",
+      "size": [
+        81,
+        41
+      ],
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "cog": true,
+      "valid_pixels": 3321,
+      "minimum": 6.500000476837158,
+      "maximum": 2094.0,
+      "overviews": []
+    },
+    {
+      "file": "05_weather/2026/temperature_2026.tif",
+      "size": [
+        81,
+        41
+      ],
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "cog": true,
+      "valid_pixels": 3321,
+      "minimum": -10.062118530273438,
+      "maximum": 21.423404693603516,
+      "overviews": []
+    }
+  ],
+  "weather_api_validation": "metadata/weather_api_validation.json",
+  "imagery_validation": "metadata/imagery_validation.json",
+  "removed_layers": [
+    "mountain_peaks",
+    "rivers_hydrorivers"
+  ],
+  "weather_display_files": "6 annual TIFFs, no monthly display files",
+  "notes": "All vector features retained whole; input invalid polygons repaired with make_valid; non-geometric records skipped.",
+  "river_revision_validation": {
+    "date": "2026-10-06",
+    "passed": true,
+    "selected_reaches_identical_to_source": true,
+    "no_clipping_or_simplification": true,
+    "density_reduction_percent": 93.25,
+    "scope": "new river and name layers; previous terrain/weather/imagery validation retained because those files were unchanged"
+  }
+}

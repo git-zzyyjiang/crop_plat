@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-06",
+  "original_bbox": [
+    72,
+    42,
+    85,
+    49
+  ],
+  "new_bbox": [
+    68,
+    40,
+    88,
+    50
+  ],
+  "removed_display_layers": [
+    "mountain_peaks",
+    "rivers_hydrorivers"
+  ],
+  "removed_weather_products": "monthly NASA POWER TIFF/PNG/GeoJSON",
+  "new_weather_source": "ERA5 0.25 degree, same model for both variables and all years",
+  "annual_products": {
+    "temperature": "2024,2025,2026",
+    "precipitation": "2024,2025,2026",
+    "S1": "2024,2025,2026",
+    "S2": "2024,2025,2026"
+  },
+  "original_backup": "original directory fully archived before replacement; outputs/原始数据备份_20261006.zip",
+  "source_data_download": "96 ERA5 source chunks read using HTTP byte ranges, source subsets and retrieval metadata preserved; 75 additional terrain tiles downloaded; Natural Earth source ZIPs reused",
+  "imagery_delivery": "updated online services; no full satellite scene download",
+  "validation": "metadata/validation.json",
+  "river_revision": {
+    "date": "2026-10-06",
+    "reason": "Natural Earth only shows a few named rivers in the basin; supplement tributaries without full dense river network",
+    "default_file": "01_basemap/rivers_major.geojson",
+    "source": "HydroRIVERS v1.0 Asia",
+    "rule": "ORD_STRA >= 5",
+    "features": 4633,
+    "unfiltered_bbox_reaches": 68627,
+    "removed_percent": 93.25,
+    "original_named_rivers": "01_basemap/rivers_named.geojson"
+  }
+}

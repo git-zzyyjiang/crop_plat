@@ -1,0 +1,9 @@
+{
+  "date": "2026-09-25",
+  "cells_per_variable": 3321,
+  "source": "same ERA5 model through Open-Meteo archive API",
+  "method": "replace missing daily aggregate only; no spatial/temporal interpolation",
+  "temperature_api_rounding_degrees_C": 0.1,
+  "precipitation_api_rounding_mm": 0.01,
+  "raw_responses": "sources/ERA5_20260925_api_gap_fill.json"
+}

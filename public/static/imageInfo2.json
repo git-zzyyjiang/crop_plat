@@ -1,0 +1,8 @@
+[
+  {"index":1,"name":"Natural Color","style":"backgroundImage:url('/img/NaturalColor.png')"},
+  {"index":2,"name":"SWIR","style":"backgroundImage:url('/img/SWIR.png')"},
+  {"index":3,"name":"Agriculture","style":"backgroundImage:url('/img/Agriculture.png')"},
+  {"index":4,"name":"NDVI","style":"backgroundImage:url('/img/NDVI.png')"},
+  {"index":5,"name":"ColorIR","style":"backgroundImage:url('/img/ColorIR.png')"},
+  {"index":6,"name":"NDMI","style":"backgroundImage:url('/img/NDMI.png')"}
+]

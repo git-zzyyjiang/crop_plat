@@ -1,0 +1,23 @@
+{
+  "id": "fb4a84c60779b06fb056ab938cadcf50",
+  "links": [
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/info",
+      "rel": "metadata",
+      "title": "Mosaic metadata"
+    },
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tilejson.json",
+      "rel": "tilejson",
+      "templated": true,
+      "title": "Link for TileJSON (Template URL)"
+    },
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/WMTSCapabilities.xml",
+      "rel": "wmts",
+      "templated": true,
+      "title": "Link for WMTS (Template URL)"
+    }
+  ],
+  "searchid": "fb4a84c60779b06fb056ab938cadcf50"
+}

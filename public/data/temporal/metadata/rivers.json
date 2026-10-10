@@ -1,0 +1,50 @@
+{
+  "updated_on": "2026-10-06",
+  "layer": {
+    "file": "01_basemap/rivers_major.geojson",
+    "type": "vector",
+    "crs": "EPSG:4326",
+    "features": 4633,
+    "selection_bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "selection_method": "retain entire intersecting reaches with ORD_STRA >= 5; no geometric clipping, no simplification",
+    "bounds": [
+      67.75624999999982,
+      39.71041666666607,
+      88.06041666666616,
+      48.702083333332574
+    ],
+    "source": "https://data.hydrosheds.org/file/HydroRIVERS/HydroRIVERS_v10_as_shp.zip",
+    "source_product": "HydroRIVERS v1.0 Asia",
+    "source_documentation": "https://www.hydrosheds.org/products/hydrorivers",
+    "river_names_available": false,
+    "name_label_layer": "01_basemap/rivers_named.geojson",
+    "filter": {
+      "ORD_STRA": {
+        "gte": 5
+      }
+    },
+    "unfiltered_reaches_in_same_bbox": 68627,
+    "reduction_percent": 93.25,
+    "order_counts": {
+      "5": 2641,
+      "6": 1300,
+      "7": 428,
+      "8": 264
+    },
+    "total_reach_length_km": 18575.21
+  },
+  "display_recommendation": {
+    "default": "ORD_STRA >= 5",
+    "small_scale_overview": "optionally filter ORD_STRA >= 6 for zoom < 6",
+    "line_width": "5: 1.0 px, 6: 1.4 px, 7: 1.8 px, 8: 2.2 px; scale with zoom",
+    "labels": "use rivers_named for labels; HydroRIVERS has no names; do not invent names",
+    "reach_count_is_not_named_river_count": true
+  },
+  "licensing": "Use HydroSHEDS product licensing terms and cite Lehner & Grill (2013), Hydrological Processes 27(15):2171–2186, doi:10.1002/hyp.9740",
+  "density_preview": "metadata/river_density_comparison.png"
+}

@@ -1,0 +1,61 @@
+{
+  "file": "05_weather/2026/precipitation_2026.tif",
+  "type": "raster",
+  "crs": "EPSG:4326",
+  "bounds": [
+    67.875,
+    39.875,
+    88.125,
+    50.125
+  ],
+  "width": 81,
+  "height": 41,
+  "resolution_degrees": [
+    0.25,
+    0.25
+  ],
+  "minimum": 6.500000476837158,
+  "maximum": 2094.0,
+  "valid_pixels": 3321,
+  "nodata": -9999.0,
+  "palette": {
+    "stops": [
+      0,
+      100,
+      300,
+      600,
+      1000,
+      1500
+    ],
+    "colors": [
+      "#ffffd9",
+      "#edf8b1",
+      "#7fcdbb",
+      "#41b6c4",
+      "#225ea8",
+      "#081d58"
+    ]
+  },
+  "web_preview": "05_weather/2026/precipitation_2026_web3857.png",
+  "web_preview_crs": "EPSG:3857",
+  "web_preview_bounds_wgs84": [
+    67.87499999999999,
+    39.871693291374754,
+    88.20186771989019,
+    50.12499999999999
+  ],
+  "web_preview_size": [
+    74,
+    53
+  ],
+  "year": 2026,
+  "units": "mm",
+  "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+  "period_start": "2026-01-01",
+  "period_end": "2026-09-30",
+  "days": 273,
+  "temporal_complete": false,
+  "aggregation": "sum over all available UTC days",
+  "downscaling": "none",
+  "native_resolution_degrees": 0.25
+}

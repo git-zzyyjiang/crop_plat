@@ -1,0 +1,72 @@
+{
+  "id": "S1_2024",
+  "sensor": "S1",
+  "year": 2024,
+  "bbox": [
+    68,
+    40,
+    88,
+    50
+  ],
+  "collection": "sentinel-1-rtc",
+  "search_id": "f7e40d67504476bf03c7eb0964d5ea49",
+  "search": {
+    "collections": [
+      "sentinel-1-rtc"
+    ],
+    "bbox": [
+      68,
+      40,
+      88,
+      50
+    ],
+    "datetime": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+    "sortby": [
+      {
+        "field": "datetime",
+        "direction": "desc"
+      }
+    ]
+  },
+  "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/WebMercatorQuad/tilejson.json?collection=sentinel-1-rtc&assets=vv&rescale=0%2C0.3&nodata=0&colormap_name=gray&tile_format=png&minzoom=6&maxzoom=14",
+  "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+  "latest_scene_datetime": "2024-12-31T01:05:57.888343Z",
+  "latest_scene_id": "S1A_IW_GRDH_1SDV_20241231T010545_20241231T010610_057229_070A0A_rtc",
+  "temporal_complete": true,
+  "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+  "rendering": {
+    "collection": "sentinel-1-rtc",
+    "assets": "vv",
+    "rescale": "0,0.3",
+    "nodata": 0,
+    "colormap_name": "gray"
+  },
+  "test": {
+    "http_status": 200,
+    "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+    "cors": "*",
+    "image_size": [
+      256,
+      256
+    ],
+    "extrema": [
+      [
+        17,
+        103
+      ],
+      [
+        17,
+        103
+      ],
+      [
+        17,
+        103
+      ],
+      [
+        255,
+        255
+      ]
+    ]
+  },
+  "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+}

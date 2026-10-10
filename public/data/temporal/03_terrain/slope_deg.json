@@ -1,0 +1,53 @@
+{
+  "file": "03_terrain/slope_deg.tif",
+  "type": "raster",
+  "crs": "EPSG:4326",
+  "bounds": [
+    68.0,
+    40.0,
+    88.0,
+    50.0
+  ],
+  "width": 4000,
+  "height": 2000,
+  "resolution_degrees": [
+    0.005,
+    0.005
+  ],
+  "minimum": 0.0,
+  "maximum": 60.369083404541016,
+  "valid_pixels": 8000000,
+  "nodata": -9999.0,
+  "palette": {
+    "stops": [
+      0,
+      5,
+      15,
+      25,
+      35,
+      45
+    ],
+    "colors": [
+      "#ffffcc",
+      "#c2e699",
+      "#78c679",
+      "#31a354",
+      "#006837",
+      "#004529"
+    ]
+  },
+  "web_preview": "03_terrain/slope_deg_web3857.png",
+  "web_preview_crs": "EPSG:3857",
+  "web_preview_bounds_wgs84": [
+    68.0,
+    39.99727284181007,
+    88.00101294902706,
+    49.99999999999999
+  ],
+  "web_preview_size": [
+    2048,
+    1454
+  ],
+  "units": "degree",
+  "source": "gradient of elevation_m.tif; metric distances corrected by latitude"
+}

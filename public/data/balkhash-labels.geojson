@@ -1,0 +1,25 @@
+﻿{
+  "type": "FeatureCollection",
+  "name": "Balkhash_Basin_Refined_Labels",
+  "features": [
+    { "type": "Feature", "properties": { "name": "巴尔喀什湖", "type": "Lake" }, "geometry": { "type": "Point", "coordinates": [74.5000, 46.2000] } },
+    { "type": "Feature", "properties": { "name": "巴尔喀什湖", "type": "Lake" }, "geometry": { "type": "Point", "coordinates": [77.8000, 46.4500] } },
+    
+    { "type": "Feature", "properties": { "name": "伊犁河三角洲", "type": "Wetland" }, "geometry": { "type": "Point", "coordinates": [74.5500, 45.6000] } },
+    { "type": "Feature", "properties": { "name": "伊犁河", "type": "River" }, "geometry": { "type": "Point", "coordinates": [75.6000, 44.9500] } },
+    { "type": "Feature", "properties": { "name": "卡普恰盖水库", "type": "Reservoir" }, "geometry": { "type": "Point", "coordinates": [77.5000, 43.8000] } },
+    { "type": "Feature", "properties": { "name": "伊犁河", "type": "River" }, "geometry": { "type": "Point", "coordinates": [79.5000, 43.8500] } },
+
+    { "type": "Feature", "properties": { "name": "伊犁河", "type": "River" }, "geometry": { "type": "Point", "coordinates": [81.0000, 43.7000] } },
+    { "type": "Feature", "properties": { "name": "特克斯河", "type": "River" }, "geometry": { "type": "Point", "coordinates": [81.8000, 43.1000] } },
+    { "type": "Feature", "properties": { "name": "巩乃斯河", "type": "River" }, "geometry": { "type": "Point", "coordinates": [83.5000, 43.4000] } },
+    { "type": "Feature", "properties": { "name": "喀什河", "type": "River" }, "geometry": { "type": "Point", "coordinates": [82.3000, 43.8000] } },
+
+    { "type": "Feature", "properties": { "name": "博罗科努山(北天山)", "type": "Mountain" }, "geometry": { "type": "Point", "coordinates": [82.0000, 44.1500] } },
+    { "type": "Feature", "properties": { "name": "哈尔克他乌山(南天山)", "type": "Mountain" }, "geometry": { "type": "Point", "coordinates": [81.5000, 42.5000] } },
+    { "type": "Feature", "properties": { "name": "外伊犁阿拉套", "type": "Mountain" }, "geometry": { "type": "Point", "coordinates": [77.1000, 42.9000] } },
+    { "type": "Feature", "properties": { "name": "准噶尔阿拉套", "type": "Mountain" }, "geometry": { "type": "Point", "coordinates": [80.5000, 45.1500] } }
+
+
+  ]
+}

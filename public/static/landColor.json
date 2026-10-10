@@ -1,0 +1,11 @@
+[
+  { "index": 0, "name": "蓝色", "style": "backgroundColor:blue"},
+  { "index": 1, "name": "深绿", "style": "backgroundColor:green"},
+  {"index": 2, "name": "浅绿", "style": "backgroundColor: rgb(135, 209, 158)"},
+  {"index": 3, "name": "黄色", "style": "backgroundColor:rgb(255, 219, 22)"},
+  { "index": 4, "name": "红色", "style": "backgroundColor:red"},
+  { "index": 5, "name": "米色", "style": "backgroundColor:rgb(237,233,228)"},
+  { "index": 6, "name": "白色", "style": "backgroundColor:white"},
+  { "index": 7, "name": "灰色", "style": "backgroundColor:rgb(200,200,200)"},
+  { "index": 8, "name": "深米", "style": "backgroundColor:rgb(239,207,168)"}
+]

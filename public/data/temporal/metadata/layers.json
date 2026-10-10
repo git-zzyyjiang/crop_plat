@@ -1,0 +1,1227 @@
+{
+  "updated_on": "2026-10-06",
+  "reference_bbox": [
+    68,
+    40,
+    88,
+    50
+  ],
+  "reference_bbox_is_basin_boundary": false,
+  "years": [
+    2024,
+    2025,
+    2026
+  ],
+  "layers": [
+    {
+      "id": "rivers",
+      "name": "主要河流（5级及以上）",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": false,
+      "file": "01_basemap/rivers_major.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 4633,
+      "selection_bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "selection_method": "retain entire intersecting reaches with ORD_STRA >= 5; no geometric clipping, no simplification",
+      "bounds": [
+        67.75624999999982,
+        39.71041666666607,
+        88.06041666666616,
+        48.702083333332574
+      ],
+      "repaired_geometries": 0,
+      "source": "https://data.hydrosheds.org/file/HydroRIVERS/HydroRIVERS_v10_as_shp.zip",
+      "source_product": "HydroRIVERS v1.0 Asia",
+      "source_documentation": "https://www.hydrosheds.org/products/hydrorivers",
+      "river_names_available": false,
+      "name_label_layer": "01_basemap/rivers_named.geojson",
+      "filter": {
+        "ORD_STRA": {
+          "gte": 5
+        }
+      },
+      "unfiltered_reaches_in_same_bbox": 68627,
+      "reduction_percent": 93.25,
+      "order_counts": {
+        "5": 2641,
+        "6": 1300,
+        "7": 428,
+        "8": 264
+      },
+      "total_reach_length_km": 18575.21
+    },
+    {
+      "id": "lakes",
+      "name": "湖泊",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": false,
+      "file": "01_basemap/lakes.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 18,
+      "selection_bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "selection_method": "retain entire intersecting features; no geometric clipping",
+      "bounds": [
+        66.11462851184046,
+        40.23203648966586,
+        87.4336560552245,
+        50.054673047922535
+      ],
+      "repaired_geometries": 0,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_lakes.zip"
+    },
+    {
+      "id": "mountain_ranges",
+      "name": "山脉与高地",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": false,
+      "file": "01_basemap/mountain_ranges.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 7,
+      "selection_bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "selection_method": "retain entire intersecting features; no geometric clipping",
+      "bounds": [
+        66.18921959727126,
+        39.6602847351503,
+        100.79053795664626,
+        52.30487702030655
+      ],
+      "repaired_geometries": 0,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_geography_regions_polys.zip"
+    },
+    {
+      "id": "countries",
+      "name": "国家面（辅助）",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": true,
+      "file": "02_boundaries/countries.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 258,
+      "selection_bbox": null,
+      "selection_method": "global complete dataset",
+      "bounds": [
+        -179.99999999999991,
+        -89.99999999999994,
+        180.0,
+        83.63410065300008
+      ],
+      "repaired_geometries": 1,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
+    },
+    {
+      "id": "country_borders",
+      "name": "国家边界",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": false,
+      "file": "02_boundaries/country_borders.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 515,
+      "selection_bbox": null,
+      "selection_method": "global complete dataset",
+      "bounds": [
+        -141.00554863899987,
+        -55.120923766999944,
+        145.94101759835863,
+        70.07531036400012
+      ],
+      "repaired_geometries": 0,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_boundary_lines_land.zip"
+    },
+    {
+      "id": "provinces",
+      "name": "州/省面（辅助）",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": true,
+      "file": "02_boundaries/provinces.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 1799,
+      "selection_bbox": [
+        25,
+        -10,
+        180,
+        85
+      ],
+      "selection_method": "retain entire intersecting features; no geometric clipping",
+      "bounds": [
+        -179.99999999999991,
+        -29.17062224691915,
+        180.0,
+        81.85871002800008
+      ],
+      "repaired_geometries": 0,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_1_states_provinces.zip"
+    },
+    {
+      "id": "province_borders",
+      "name": "州/省界",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": false,
+      "file": "02_boundaries/province_borders.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 3860,
+      "selection_bbox": [
+        25,
+        -10,
+        180,
+        85
+      ],
+      "selection_method": "retain entire intersecting features; no geometric clipping",
+      "bounds": [
+        23.158101027040743,
+        -11.501726575421117,
+        174.51237674369168,
+        73.86912669494097
+      ],
+      "repaired_geometries": 0,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_1_states_provinces_lines.zip"
+    },
+    {
+      "id": "elevation_m",
+      "name": "高程",
+      "temporal_type": "static",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "03_terrain/elevation_m.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        68.0,
+        40.0,
+        88.0,
+        50.0
+      ],
+      "width": 4000,
+      "height": 2000,
+      "resolution_degrees": [
+        0.005,
+        0.005
+      ],
+      "minimum": -693.3900146484375,
+      "maximum": 7181.42041015625,
+      "valid_pixels": 8000000,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          0,
+          500,
+          1000,
+          2000,
+          3500,
+          5000
+        ],
+        "colors": [
+          "#205b35",
+          "#72a34d",
+          "#d6c785",
+          "#a17a55",
+          "#dddddd",
+          "#ffffff"
+        ]
+      },
+      "web_preview": "03_terrain/elevation_m_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        68.0,
+        39.99727284181007,
+        88.00101294902706,
+        49.99999999999999
+      ],
+      "web_preview_size": [
+        2048,
+        1454
+      ],
+      "units": "m",
+      "source": "Mapzen Terrain Tiles z8"
+    },
+    {
+      "id": "slope_deg",
+      "name": "坡度",
+      "temporal_type": "static",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "03_terrain/slope_deg.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        68.0,
+        40.0,
+        88.0,
+        50.0
+      ],
+      "width": 4000,
+      "height": 2000,
+      "resolution_degrees": [
+        0.005,
+        0.005
+      ],
+      "minimum": 0.0,
+      "maximum": 60.369083404541016,
+      "valid_pixels": 8000000,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          0,
+          5,
+          15,
+          25,
+          35,
+          45
+        ],
+        "colors": [
+          "#ffffcc",
+          "#c2e699",
+          "#78c679",
+          "#31a354",
+          "#006837",
+          "#004529"
+        ]
+      },
+      "web_preview": "03_terrain/slope_deg_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        68.0,
+        39.99727284181007,
+        88.00101294902706,
+        49.99999999999999
+      ],
+      "web_preview_size": [
+        2048,
+        1454
+      ],
+      "units": "degree",
+      "source": "gradient of elevation_m.tif; metric distances corrected by latitude"
+    },
+    {
+      "id": "temperature_2024",
+      "name": "气温 2024",
+      "temporal_type": "annual",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "05_weather/2024/temperature_2024.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "minimum": -13.073969841003418,
+      "maximum": 17.546306610107422,
+      "valid_pixels": 3321,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          -10,
+          0,
+          10,
+          20,
+          30
+        ],
+        "colors": [
+          "#313695",
+          "#74add1",
+          "#ffffbf",
+          "#f46d43",
+          "#a50026"
+        ]
+      },
+      "web_preview": "05_weather/2024/temperature_2024_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        67.87499999999999,
+        39.871693291374754,
+        88.20186771989019,
+        50.12499999999999
+      ],
+      "web_preview_size": [
+        74,
+        53
+      ],
+      "year": 2024,
+      "units": "degC",
+      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+      "period_start": "2024-01-01",
+      "period_end": "2024-12-31",
+      "days": 366,
+      "temporal_complete": true,
+      "aggregation": "daily mean averaged over all available UTC days",
+      "downscaling": "none",
+      "native_resolution_degrees": 0.25,
+      "geojson": "05_weather/2024/temperature_2024.geojson"
+    },
+    {
+      "id": "temperature_2025",
+      "name": "气温 2025",
+      "temporal_type": "annual",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "05_weather/2025/temperature_2025.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "minimum": -12.904012680053711,
+      "maximum": 18.221370697021484,
+      "valid_pixels": 3321,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          -10,
+          0,
+          10,
+          20,
+          30
+        ],
+        "colors": [
+          "#313695",
+          "#74add1",
+          "#ffffbf",
+          "#f46d43",
+          "#a50026"
+        ]
+      },
+      "web_preview": "05_weather/2025/temperature_2025_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        67.87499999999999,
+        39.871693291374754,
+        88.20186771989019,
+        50.12499999999999
+      ],
+      "web_preview_size": [
+        74,
+        53
+      ],
+      "year": 2025,
+      "units": "degC",
+      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "days": 365,
+      "temporal_complete": true,
+      "aggregation": "daily mean averaged over all available UTC days",
+      "downscaling": "none",
+      "native_resolution_degrees": 0.25,
+      "geojson": "05_weather/2025/temperature_2025.geojson"
+    },
+    {
+      "id": "temperature_2026",
+      "name": "气温 2026（截至9月30日）",
+      "temporal_type": "annual",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "05_weather/2026/temperature_2026.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "minimum": -10.062118530273438,
+      "maximum": 21.423404693603516,
+      "valid_pixels": 3321,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          -10,
+          0,
+          10,
+          20,
+          30
+        ],
+        "colors": [
+          "#313695",
+          "#74add1",
+          "#ffffbf",
+          "#f46d43",
+          "#a50026"
+        ]
+      },
+      "web_preview": "05_weather/2026/temperature_2026_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        67.87499999999999,
+        39.871693291374754,
+        88.20186771989019,
+        50.12499999999999
+      ],
+      "web_preview_size": [
+        74,
+        53
+      ],
+      "year": 2026,
+      "units": "degC",
+      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+      "period_start": "2026-01-01",
+      "period_end": "2026-09-30",
+      "days": 273,
+      "temporal_complete": false,
+      "aggregation": "daily mean averaged over all available UTC days",
+      "downscaling": "none",
+      "native_resolution_degrees": 0.25,
+      "geojson": "05_weather/2026/temperature_2026.geojson"
+    },
+    {
+      "id": "precipitation_2024",
+      "name": "降水 2024",
+      "temporal_type": "annual",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "05_weather/2024/precipitation_2024.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "minimum": 13.300000190734863,
+      "maximum": 2636.300048828125,
+      "valid_pixels": 3321,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          0,
+          100,
+          300,
+          600,
+          1000,
+          1500
+        ],
+        "colors": [
+          "#ffffd9",
+          "#edf8b1",
+          "#7fcdbb",
+          "#41b6c4",
+          "#225ea8",
+          "#081d58"
+        ]
+      },
+      "web_preview": "05_weather/2024/precipitation_2024_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        67.87499999999999,
+        39.871693291374754,
+        88.20186771989019,
+        50.12499999999999
+      ],
+      "web_preview_size": [
+        74,
+        53
+      ],
+      "year": 2024,
+      "units": "mm",
+      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+      "period_start": "2024-01-01",
+      "period_end": "2024-12-31",
+      "days": 366,
+      "temporal_complete": true,
+      "aggregation": "sum over all available UTC days",
+      "downscaling": "none",
+      "native_resolution_degrees": 0.25,
+      "geojson": "05_weather/2024/precipitation_2024.geojson"
+    },
+    {
+      "id": "precipitation_2025",
+      "name": "降水 2025",
+      "temporal_type": "annual",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "05_weather/2025/precipitation_2025.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "minimum": 4.599999904632568,
+      "maximum": 2277.199951171875,
+      "valid_pixels": 3321,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          0,
+          100,
+          300,
+          600,
+          1000,
+          1500
+        ],
+        "colors": [
+          "#ffffd9",
+          "#edf8b1",
+          "#7fcdbb",
+          "#41b6c4",
+          "#225ea8",
+          "#081d58"
+        ]
+      },
+      "web_preview": "05_weather/2025/precipitation_2025_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        67.87499999999999,
+        39.871693291374754,
+        88.20186771989019,
+        50.12499999999999
+      ],
+      "web_preview_size": [
+        74,
+        53
+      ],
+      "year": 2025,
+      "units": "mm",
+      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "days": 365,
+      "temporal_complete": true,
+      "aggregation": "sum over all available UTC days",
+      "downscaling": "none",
+      "native_resolution_degrees": 0.25,
+      "geojson": "05_weather/2025/precipitation_2025.geojson"
+    },
+    {
+      "id": "precipitation_2026",
+      "name": "降水 2026（截至9月30日）",
+      "temporal_type": "annual",
+      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
+      "file": "05_weather/2026/precipitation_2026.tif",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "minimum": 6.500000476837158,
+      "maximum": 2094.0,
+      "valid_pixels": 3321,
+      "nodata": -9999.0,
+      "palette": {
+        "stops": [
+          0,
+          100,
+          300,
+          600,
+          1000,
+          1500
+        ],
+        "colors": [
+          "#ffffd9",
+          "#edf8b1",
+          "#7fcdbb",
+          "#41b6c4",
+          "#225ea8",
+          "#081d58"
+        ]
+      },
+      "web_preview": "05_weather/2026/precipitation_2026_web3857.png",
+      "web_preview_crs": "EPSG:3857",
+      "web_preview_bounds_wgs84": [
+        67.87499999999999,
+        39.871693291374754,
+        88.20186771989019,
+        50.12499999999999
+      ],
+      "web_preview_size": [
+        74,
+        53
+      ],
+      "year": 2026,
+      "units": "mm",
+      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
+      "period_start": "2026-01-01",
+      "period_end": "2026-09-30",
+      "days": 273,
+      "temporal_complete": false,
+      "aggregation": "sum over all available UTC days",
+      "downscaling": "none",
+      "native_resolution_degrees": 0.25,
+      "geojson": "05_weather/2026/precipitation_2026.geojson"
+    },
+    {
+      "name": "Sentinel-1 2024",
+      "type": "online_raster",
+      "temporal_type": "annual",
+      "web_format": "TileJSON/XYZ",
+      "id": "S1_2024",
+      "sensor": "S1",
+      "year": 2024,
+      "bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "collection": "sentinel-1-rtc",
+      "search_id": "f7e40d67504476bf03c7eb0964d5ea49",
+      "search": {
+        "collections": [
+          "sentinel-1-rtc"
+        ],
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "datetime": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+        "sortby": [
+          {
+            "field": "datetime",
+            "direction": "desc"
+          }
+        ]
+      },
+      "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/WebMercatorQuad/tilejson.json?collection=sentinel-1-rtc&assets=vv&rescale=0%2C0.3&nodata=0&colormap_name=gray&tile_format=png&minzoom=6&maxzoom=14",
+      "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "latest_scene_datetime": "2024-12-31T01:05:57.888343Z",
+      "latest_scene_id": "S1A_IW_GRDH_1SDV_20241231T010545_20241231T010610_057229_070A0A_rtc",
+      "temporal_complete": true,
+      "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+      "rendering": {
+        "collection": "sentinel-1-rtc",
+        "assets": "vv",
+        "rescale": "0,0.3",
+        "nodata": 0,
+        "colormap_name": "gray"
+      },
+      "test": {
+        "http_status": 200,
+        "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/f7e40d67504476bf03c7eb0964d5ea49/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+        "cors": "*",
+        "image_size": [
+          256,
+          256
+        ],
+        "extrema": [
+          [
+            17,
+            103
+          ],
+          [
+            17,
+            103
+          ],
+          [
+            17,
+            103
+          ],
+          [
+            255,
+            255
+          ]
+        ]
+      },
+      "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+    },
+    {
+      "name": "Sentinel-1 2025",
+      "type": "online_raster",
+      "temporal_type": "annual",
+      "web_format": "TileJSON/XYZ",
+      "id": "S1_2025",
+      "sensor": "S1",
+      "year": 2025,
+      "bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "collection": "sentinel-1-rtc",
+      "search_id": "2b992ebd5eaca7b7de6e69b4a4bcf408",
+      "search": {
+        "collections": [
+          "sentinel-1-rtc"
+        ],
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "datetime": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+        "sortby": [
+          {
+            "field": "datetime",
+            "direction": "desc"
+          }
+        ]
+      },
+      "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/2b992ebd5eaca7b7de6e69b4a4bcf408/WebMercatorQuad/tilejson.json?collection=sentinel-1-rtc&assets=vv&rescale=0%2C0.3&nodata=0&colormap_name=gray&tile_format=png&minzoom=6&maxzoom=14",
+      "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/2b992ebd5eaca7b7de6e69b4a4bcf408/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "latest_scene_datetime": "2025-12-31T12:19:53.544787Z",
+      "latest_scene_id": "S1A_IW_GRDH_1SDV_20251231T121940_20251231T122006_062559_07D726_rtc",
+      "temporal_complete": true,
+      "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+      "rendering": {
+        "collection": "sentinel-1-rtc",
+        "assets": "vv",
+        "rescale": "0,0.3",
+        "nodata": 0,
+        "colormap_name": "gray"
+      },
+      "test": {
+        "http_status": 200,
+        "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/2b992ebd5eaca7b7de6e69b4a4bcf408/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+        "cors": "*",
+        "image_size": [
+          256,
+          256
+        ],
+        "extrema": [
+          [
+            0,
+            138
+          ],
+          [
+            0,
+            138
+          ],
+          [
+            0,
+            138
+          ],
+          [
+            255,
+            255
+          ]
+        ]
+      },
+      "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+    },
+    {
+      "name": "Sentinel-1 2026（截至可用日期）",
+      "type": "online_raster",
+      "temporal_type": "annual",
+      "web_format": "TileJSON/XYZ",
+      "id": "S1_2026",
+      "sensor": "S1",
+      "year": 2026,
+      "bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "collection": "sentinel-1-rtc",
+      "search_id": "fb4a84c60779b06fb056ab938cadcf50",
+      "search": {
+        "collections": [
+          "sentinel-1-rtc"
+        ],
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "datetime": "2026-01-01T00:00:00Z/2026-10-05T23:59:59Z",
+        "sortby": [
+          {
+            "field": "datetime",
+            "direction": "desc"
+          }
+        ]
+      },
+      "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/WebMercatorQuad/tilejson.json?collection=sentinel-1-rtc&assets=vv&rescale=0%2C0.3&nodata=0&colormap_name=gray&tile_format=png&minzoom=6&maxzoom=14",
+      "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+      "latest_scene_datetime": "2026-10-03T12:26:52.274739Z",
+      "latest_scene_id": "S1D_IW_GRDH_1SDV_20261003T122642_20261003T122702_004851_0091DF_rtc",
+      "temporal_complete": false,
+      "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+      "rendering": {
+        "collection": "sentinel-1-rtc",
+        "assets": "vv",
+        "rescale": "0,0.3",
+        "nodata": 0,
+        "colormap_name": "gray"
+      },
+      "test": {
+        "http_status": 200,
+        "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/fb4a84c60779b06fb056ab938cadcf50/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-1-rtc&assets=vv&rescale=0,0.3&nodata=0&colormap_name=gray",
+        "cors": "*",
+        "image_size": [
+          256,
+          256
+        ],
+        "extrema": [
+          [
+            0,
+            125
+          ],
+          [
+            0,
+            125
+          ],
+          [
+            0,
+            125
+          ],
+          [
+            255,
+            255
+          ]
+        ]
+      },
+      "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+    },
+    {
+      "name": "Sentinel-2 2024",
+      "type": "online_raster",
+      "temporal_type": "annual",
+      "web_format": "TileJSON/XYZ",
+      "id": "S2_2024",
+      "sensor": "S2",
+      "year": 2024,
+      "bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "collection": "sentinel-2-l2a",
+      "search_id": "5e41e7bae813c4b11c00d571a8cde540",
+      "search": {
+        "collections": [
+          "sentinel-2-l2a"
+        ],
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "datetime": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+        "sortby": [
+          {
+            "field": "datetime",
+            "direction": "desc"
+          }
+        ],
+        "query": {
+          "eo:cloud_cover": {
+            "lt": 20
+          }
+        }
+      },
+      "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
+      "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "latest_scene_datetime": "2024-12-31T06:12:51.024000Z",
+      "latest_scene_id": "S2A_MSIL2A_20241231T061251_R134_T43UER_20241231T085650",
+      "temporal_complete": true,
+      "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+      "rendering": {
+        "collection": "sentinel-2-l2a",
+        "assets": [
+          "B04",
+          "B03",
+          "B02"
+        ],
+        "rescale": "0,3000",
+        "nodata": 0
+      },
+      "test": {
+        "http_status": 200,
+        "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+        "cors": "*",
+        "image_size": [
+          256,
+          256
+        ],
+        "extrema": [
+          [
+            0,
+            255
+          ],
+          [
+            0,
+            255
+          ],
+          [
+            0,
+            255
+          ],
+          [
+            255,
+            255
+          ]
+        ]
+      },
+      "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+    },
+    {
+      "name": "Sentinel-2 2025",
+      "type": "online_raster",
+      "temporal_type": "annual",
+      "web_format": "TileJSON/XYZ",
+      "id": "S2_2025",
+      "sensor": "S2",
+      "year": 2025,
+      "bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "collection": "sentinel-2-l2a",
+      "search_id": "6e614453f033341218d5eedf18e4399e",
+      "search": {
+        "collections": [
+          "sentinel-2-l2a"
+        ],
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "datetime": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+        "sortby": [
+          {
+            "field": "datetime",
+            "direction": "desc"
+          }
+        ],
+        "query": {
+          "eo:cloud_cover": {
+            "lt": 20
+          }
+        }
+      },
+      "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
+      "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "latest_scene_datetime": "2025-12-31T06:11:49.024000Z",
+      "latest_scene_id": "S2B_MSIL2A_20251231T061149_R134_T43TCL_20251231T080226",
+      "temporal_complete": true,
+      "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+      "rendering": {
+        "collection": "sentinel-2-l2a",
+        "assets": [
+          "B04",
+          "B03",
+          "B02"
+        ],
+        "rescale": "0,3000",
+        "nodata": 0
+      },
+      "test": {
+        "http_status": 200,
+        "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+        "cors": "*",
+        "image_size": [
+          256,
+          256
+        ],
+        "extrema": [
+          [
+            0,
+            255
+          ],
+          [
+            0,
+            255
+          ],
+          [
+            0,
+            255
+          ],
+          [
+            255,
+            255
+          ]
+        ]
+      },
+      "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+    },
+    {
+      "name": "Sentinel-2 2026（截至可用日期）",
+      "type": "online_raster",
+      "temporal_type": "annual",
+      "web_format": "TileJSON/XYZ",
+      "id": "S2_2026",
+      "sensor": "S2",
+      "year": 2026,
+      "bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "collection": "sentinel-2-l2a",
+      "search_id": "6b153391fbd5df2bac13dd45426532c3",
+      "search": {
+        "collections": [
+          "sentinel-2-l2a"
+        ],
+        "bbox": [
+          68,
+          40,
+          88,
+          50
+        ],
+        "datetime": "2026-01-01T00:00:00Z/2026-10-05T23:59:59Z",
+        "sortby": [
+          {
+            "field": "datetime",
+            "direction": "desc"
+          }
+        ],
+        "query": {
+          "eo:cloud_cover": {
+            "lt": 20
+          }
+        }
+      },
+      "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
+      "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+      "latest_scene_datetime": "2026-10-03T06:27:09.024000Z",
+      "latest_scene_id": "S2B_MSIL2A_20261003T062709_R077_T42TWR_20261003T102544",
+      "temporal_complete": false,
+      "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
+      "rendering": {
+        "collection": "sentinel-2-l2a",
+        "assets": [
+          "B04",
+          "B03",
+          "B02"
+        ],
+        "rescale": "0,3000",
+        "nodata": 0
+      },
+      "test": {
+        "http_status": 200,
+        "url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/tiles/WebMercatorQuad/9/363/182.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
+        "cors": "*",
+        "image_size": [
+          256,
+          256
+        ],
+        "extrema": [
+          [
+            144,
+            255
+          ],
+          [
+            122,
+            255
+          ],
+          [
+            107,
+            255
+          ],
+          [
+            255,
+            255
+          ]
+        ]
+      },
+      "data_delivery": "online service configuration, no full-resolution satellite scenes downloaded"
+    },
+    {
+      "id": "rivers_named",
+      "name": "河流名称（辅助标注）",
+      "temporal_type": "static",
+      "web_format": "GeoJSON",
+      "auxiliary": true,
+      "file": "01_basemap/rivers_named.geojson",
+      "type": "vector",
+      "crs": "EPSG:4326",
+      "features": 16,
+      "selection_bbox": [
+        68,
+        40,
+        88,
+        50
+      ],
+      "selection_method": "retain entire intersecting features; no geometric clipping",
+      "bounds": [
+        60.8997640538935,
+        35.52069733280662,
+        90.32529296875003,
+        53.98561432499412
+      ],
+      "repaired_geometries": 0,
+      "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_rivers_lake_centerlines.zip",
+      "role": "auxiliary river-name labels"
+    }
+  ],
+  "display_layer_count": 19,
+  "auxiliary_polygon_layer_count": 2,
+  "year_2026_complete": false,
+  "weather_2026_period_end": "2026-09-30",
+  "vector_selection": "entire intersecting features retained, no geometric clipping",
+  "coordinate_order": "longitude,latitude",
+  "sources_directory_required_for_frontend": false,
+  "auxiliary_label_layer_count": 1,
+  "river_density_rule": "HydroRIVERS Strahler order >= 5"
+}

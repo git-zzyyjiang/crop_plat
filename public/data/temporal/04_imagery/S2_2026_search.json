@@ -1,0 +1,23 @@
+{
+  "collections": [
+    "sentinel-2-l2a"
+  ],
+  "bbox": [
+    68,
+    40,
+    88,
+    50
+  ],
+  "datetime": "2026-01-01T00:00:00Z/2026-10-05T23:59:59Z",
+  "sortby": [
+    {
+      "field": "datetime",
+      "direction": "desc"
+    }
+  ],
+  "query": {
+    "eo:cloud_cover": {
+      "lt": 20
+    }
+  }
+}
