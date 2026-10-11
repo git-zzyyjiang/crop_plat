@@ -116,3 +116,14 @@ powershell -ExecutionPolicy Bypass -File .\geoserver\publish-rotation.ps1
 
 前端不依赖图层的默认样式，而是在 WMS 请求里按页签指定 `STYLES`，点图例时再加
 `CQL_FILTER` 只看某一类。
+
+「种植多样性」用的是 10km 网格那份数据（`网格/grid_2024_10km_crop_diversity`）：
+
+```powershell
+node scripts\grid-diversity.cjs "C:\Users\27814\Desktop\网格"
+```
+
+生成 `public/static/gridDiversityStats.json`：每格的作物种类数、Shannon / Simpson、
+地块密度、优势作物占比，外加每个格网反算成经纬度的包围盒。这份数据是 Albers
+等积投影（Balkhash_Albers_WGS84，单位米），前端用经纬度，所以脚本里做了投影反算，
+框选时按包围盒挑出落在选区里的格网再求平均。

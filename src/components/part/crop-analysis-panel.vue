@@ -126,19 +126,49 @@
           <template v-else>
           <div class="ca-sub">种植多样性</div>
           <div class="ca-row"><span>作物种类数</span><b>{{ result.diversity.richness }}</b></div>
-          <div class="ca-row">
-            <span>Shannon（类型面积占比）</span>
-            <b>{{ result.diversity.shannon.toFixed(3) }}</b>
-          </div>
-          <div class="ca-row">
-            <span>Simpson（类型面积占比）</span>
-            <b>{{ result.diversity.simpson.toFixed(3) }}</b>
-          </div>
-          <div class="ca-row">
-            <span>单位面积作物种类<br>（种/千km²）</span>
-            <b>{{ (result.diversity.speciesPerKm2 * 1000).toFixed(2) }}</b>
-          </div>
-          <p class="ca-tip">新数据一条记录就是一个地块、一个作物类型，"地块平均"类多样性指标不再适用。</p>
+          <!-- 网格统计可用时按 10km 网格展示，数据源 grid_2024_10km_crop_diversity -->
+          <template v-if="result.diversity.fromGrid">
+            <div class="ca-row">
+              <span>{{ result.diversity.gridKm }}km 网格数</span>
+              <b>{{ formatCount(result.diversity.gridCount) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>平均每格作物种类数</span>
+              <b>{{ result.diversity.meanCropTypes.toFixed(2) }} 种/格</b>
+            </div>
+            <div class="ca-row">
+              <span>Shannon（网格平均）</span>
+              <b>{{ result.diversity.shannon.toFixed(3) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>Simpson（网格平均）</span>
+              <b>{{ result.diversity.simpson.toFixed(3) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>平均地块密度</span>
+              <b>{{ result.diversity.meanDensity.toFixed(2) }} 个/km²</b>
+            </div>
+            <div class="ca-row">
+              <span>平均优势作物占比</span>
+              <b>{{ result.diversity.meanDominantPct.toFixed(1) }}%</b>
+            </div>
+            <p class="ca-tip">按 {{ result.diversity.gridKm }}km 网格统计（grid_2024_10km_crop_diversity）。</p>
+          </template>
+          <template v-else>
+            <div class="ca-row">
+              <span>Shannon（类型面积占比）</span>
+              <b>{{ result.diversity.shannon.toFixed(3) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>Simpson（类型面积占比）</span>
+              <b>{{ result.diversity.simpson.toFixed(3) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>单位面积作物种类<br>（种/千km²）</span>
+              <b>{{ (result.diversity.speciesPerKm2 * 1000).toFixed(2) }}</b>
+            </div>
+            <p class="ca-tip">网格多样性统计不可用，这里显示按面积占比算的整体指标。</p>
+          </template>
           </template>
         </template>
       </template>

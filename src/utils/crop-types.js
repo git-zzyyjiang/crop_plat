@@ -26,6 +26,8 @@ export const CROP_STYLE_NAME = 'agri-agent:crop-style-10'
 export const CROP_STATS_URL = '/static/cutCropStats.json'
 // 1009 分析数据生成的时序/种植分析统计（scripts/temporal-analysis.cjs）
 export const CROP_TEMPORAL_STATS_URL = '/static/parcelTemporalStats.json'
+// 10km 网格的作物多样性统计（scripts/grid-diversity.cjs 生成）
+export const CROP_GRID_STATS_URL = '/static/gridDiversityStats.json'
 // 1009 数据发布到 GeoServer 的轮作图层与样式（geoserver/publish-rotation.ps1）
 export const CROP_ROTATION_LAYER = 'agri-agent:bh_crop_rotation'
 export const CROP_ROTATION_STYLE = 'agri-agent:crop-rotation-10'

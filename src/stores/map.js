@@ -42,6 +42,7 @@ import { sampleParcelMarkers, loadParcelAnimationFeatures, parcelSweepProgress }
 import { fetchRecognitionFeatures } from '@/utils/recognition-data';
 import {
     CROP_TYPES, CROP_YEARS, CROP_STYLE_NAME, CROP_STATS_URL, CROP_TEMPORAL_STATS_URL,
+    CROP_GRID_STATS_URL,
     CROP_ROTATION_LAYER, CROP_ROTATION_STYLE, CROP_STABILITY_STYLE,
     CROP_PARCEL_FIELD, CROP_TYPE_FIELD,
     cropLayerName, cropTypeName, cropFilterExpression,
@@ -103,6 +104,7 @@ const CROP_ANALYSIS_FULL_EXTENT = [72.4875, 42.2583, 85.0006, 49.1297];
 // 离线统计 JSON 的模块级缓存，一次会话只请求一次
 let cropStatsPromise = null;
 let cropTemporalStatsPromise = null;
+let cropGridStatsPromise = null;
 
 // 农田页地区下拉框。数据还没接入，先内置几个流域内的地点作为占位，
 // 接数据时用 setParcelRegions 传入，或者放 /static/parcelRegions.json。
@@ -168,6 +170,7 @@ const useMapStore =  defineStore('map',{
             cropSelectedCodes:[],   // 图例选中的作物编码，空数组表示显示全部
             cropStats:null,         // 离线统计的全流域数字（scripts/cut-stats.cjs 生成）
             cropTemporalStats:null, // 1009 数据的时序 / 种植分析统计（scripts/temporal-analysis.cjs 生成）
+            gridStats:null,         // 10km 网格多样性统计（scripts/grid-diversity.cjs 生成）
             cropTab:'visual',       // 二级页签，决定地图上显示哪一层
             rotationSelected:'',    // 选中的轮作序列，空串表示前十种全显示
             stabilitySelected:'',   // 选中的稳定性分级 0/1/2，空串表示三级全显示
@@ -525,10 +528,20 @@ const useMapStore =  defineStore('map',{
         //   作物类型可视化 -> 逐年作物分类（作物类型图层）
         //   作物时间序列   -> 轮作类型（1009 数据发布的图层）
         //   种植分析       -> 不显示分类图层，只看底图和流域边界
+        // 作物图层什么时候该显示：
+        //   作物类型可视化           -> 整幅显示
+        //   交互识别                 -> 框选前不显示，框选后只显示框内
+        //                              （范围由 setParcelRoiLayerExtent 裁到选区）
+        //   作物时间序列 / 种植分析  -> 不显示
+        shouldShowCropLayer:function(){
+            if(this.cropTab === 'visual') return true
+            return this.cropTab === 'identify' && this.parcelRoiState === 'applied'
+        },
+
         setCropTab:function(tab){
             this.cropTab = tab
             if(!this.map) return
-            if(this.cropLayer && this.cropLayer.setVisible) this.cropLayer.setVisible(tab === 'visual')
+            if(this.cropLayer && this.cropLayer.setVisible) this.cropLayer.setVisible(this.shouldShowCropLayer())
             // 作物时间序列和种植分析共用一份发布好的 1009 图层，换的是样式和筛选条件
             if(tab === 'series' || tab === 'analysis') this.reloadRotationLayer()
             else this.removeRotationLayer()
@@ -1085,6 +1098,8 @@ const useMapStore =  defineStore('map',{
             // 已经框选时，新加载的图层也要裁到框内，
             // 否则换类型 / 换年份之后框外又会冒出作物色（框选状态下只应显示框内的数据）
             if(this.parcelRoiExtent) this.cropLayer.setExtent(this.parcelRoiExtent)
+            // 交互识别模块在框选之前不显示作物图层，换年份重建出来的图层也一样
+            if(!this.shouldShowCropLayer() && cropLayer.setVisible) cropLayer.setVisible(false)
         },
 
         // 行政区矢量边界
@@ -2434,7 +2449,7 @@ const useMapStore =  defineStore('map',{
         // 识别结束 / 取数失败时还原作物图层（框选时依然只显示框内）
         restoreCropLayerAfterScan:function(){
             if(this.cropLayer && this.cropLayer.setVisible){
-                this.cropLayer.setVisible(this.cropTab === 'visual')
+                this.cropLayer.setVisible(this.shouldShowCropLayer())
             }
         },
 
@@ -2504,11 +2519,11 @@ const useMapStore =  defineStore('map',{
                 this.cropAnalysisLoading = true
                 const statsReqId = ++this.cropAnalysisReqId
                 try{
-                    const [stats, temporal] = await Promise.all([
-                        this.getCropStats(), this.getCropTemporalStats()
+                    const [stats, temporal, grid] = await Promise.all([
+                        this.getCropStats(), this.getCropTemporalStats(), this.getGridStats()
                     ])
                     if(statsReqId !== this.cropAnalysisReqId) return
-                    const result = stats ? this.cropAnalysisFromStats(stats, this.cropYear, temporal) : null
+                    const result = stats ? this.cropAnalysisFromStats(stats, this.cropYear, temporal, grid) : null
                     if(result){
                         this.cropAnalysisFullResult = result
                         this.cropAnalysisYearsLoaded = CROP_YEARS.slice()
@@ -2532,7 +2547,7 @@ const useMapStore =  defineStore('map',{
             }
 
             // 同一范围和数据源去重；新范围立刻取消旧统计，给识别请求让出带宽。
-            const pendingKey = `${this.baseUrl}|${JSON.stringify(this.cropAnalysisYears)}|${isRoi ? 'roi' : 'full'}|${extent.join(',')}`
+            const pendingKey = `${this.baseUrl}|${JSON.stringify(this.cropAnalysisYears)}|${isRoi ? 'roi' : 'full'}|${isRoi ? this.cropYear : ''}|${extent.join(',')}`
             if(!force && this.cropAnalysisLoading && this.cropAnalysisPendingKey === pendingKey){
                 return
             }
@@ -2610,8 +2625,13 @@ const useMapStore =  defineStore('map',{
                     })
                 }
                 if(reqId !== this.cropAnalysisReqId) return
-                const result = this.computeCropAnalysis(records, extent, loadedYears)
+                const result = this.computeCropAnalysis(records, extent, loadedYears, this.cropYear)
                 result.loadedYears = loadedYears
+                // 框选范围内的多样性换成落在选区里的 10km 网格统计
+                await this.getGridStats()
+                if(reqId !== this.cropAnalysisReqId) return
+                const gridDiversity = this.gridDiversityForExtent(extent)
+                if(gridDiversity) result.diversity = {...result.diversity, ...gridDiversity}
                 if(reqId !== this.cropAnalysisReqId) return
                 this.cropAnalysisYearsLoaded = loadedYears
                 this.cropAnalysisExtent = extent.slice()
@@ -2671,9 +2691,48 @@ const useMapStore =  defineStore('map',{
             return this.cropTemporalStats
         },
 
+        // 取 10km 网格的作物多样性统计，「种植多样性」面板用
+        getGridStats:async function(){
+            if(this.gridStats) return this.gridStats
+            if(!cropGridStatsPromise){
+                cropGridStatsPromise = axios.get(CROP_GRID_STATS_URL)
+                    .then(res => res.data)
+                    .catch(e => {
+                        console.warn('网格多样性统计 JSON 读取失败：', e && (e.message || e))
+                        cropGridStatsPromise = null
+                        return null
+                    })
+            }
+            this.gridStats = await cropGridStatsPromise
+            return this.gridStats
+        },
+
+        // 框选范围压住了哪些 10km 网格，用落在里面的网格平均值代表这片区域
+        gridDiversityForExtent:function(extent){
+            const stats = this.gridStats
+            if(!stats || !Array.isArray(stats.grids) || !extent) return null
+            const [minX, minY, maxX, maxY] = extent
+            const hit = stats.grids.filter(grid => grid.bbox
+                && grid.bbox[2] >= minX && grid.bbox[0] <= maxX
+                && grid.bbox[3] >= minY && grid.bbox[1] <= maxY)
+            if(!hit.length) return null
+            const mean = key => hit.reduce((sum, grid) => sum + (Number(grid[key]) || 0), 0) / hit.length
+            return {
+                richness: stats.summary ? stats.summary.cropTypeCount : 0,
+                gridCount: hit.length,
+                gridKm: stats.gridKm || 10,
+                meanCropTypes: Math.round(mean('nCrop') * 100) / 100,
+                shannon: Math.round(mean('shannon') * 1000) / 1000,
+                simpson: Math.round(mean('simpson') * 1000) / 1000,
+                meanDensity: Math.round(mean('density') * 100) / 100,
+                meanDominantPct: Math.round(mean('dominantPct') * 10) / 10,
+                fromGrid: true
+            }
+        },
+
         // 把离线统计按当前年份拼成面板要的结构，字段和 computeCropAnalysis 对齐。
         // temporal 是 1009 数据算出来的时序统计，稳定性以它的口径为准
-        cropAnalysisFromStats:function(stats, year, temporal){
+        cropAnalysisFromStats:function(stats, year, temporal, grid){
             const data = stats && stats.years && stats.years[String(year)]
             if(!data) return null
             const byType = data.byType
@@ -2695,17 +2754,31 @@ const useMapStore =  defineStore('map',{
                 parcelCount: data.parcelCount,
                 totalArea: data.totalAreaKm2,
                 byType,
-                diversity: {
-                    richness: byType.filter(item => item.count > 0).length,
-                    shannon: ratios.reduce((sum, p) => (p > 0 ? sum - p * Math.log(p) : sum), 0),
-                    simpson: 1 - ratios.reduce((sum, p) => sum + p * p, 0),
-                    speciesPerKm2: data.totalAreaKm2 ? byType.length / data.totalAreaKm2 : 0,
-                    // 新数据一个地块只有一个作物类型，"地块平均"类指标没有意义
-                    parcelShannon: 0,
-                    parcelSimpson: 0,
-                    parcelTypesPerKm2: 0,
-                    parcelUsable: 0
-                },
+                // 多样性按 10km 网格统计，数据源是网格文件夹里的
+                // grid_2024_10km_crop_diversity（scripts/grid-diversity.cjs 生成）
+                diversity: grid && grid.summary
+                    ? {
+                        richness: grid.summary.cropTypeCount,
+                        shannon: grid.summary.meanShannon,
+                        simpson: grid.summary.meanSimpson,
+                        gridCount: grid.summary.gridCount,
+                        gridKm: grid.gridKm || 10,
+                        meanCropTypes: grid.summary.meanCropTypes,
+                        meanDensity: grid.summary.meanDensity,
+                        meanDominantPct: grid.summary.meanDominantPct,
+                        fromGrid: true
+                    }
+                    : {
+                        richness: byType.filter(item => item.count > 0).length,
+                        shannon: ratios.reduce((sum, p) => (p > 0 ? sum - p * Math.log(p) : sum), 0),
+                        simpson: 1 - ratios.reduce((sum, p) => sum + p * p, 0),
+                        speciesPerKm2: data.totalAreaKm2 ? byType.length / data.totalAreaKm2 : 0,
+                        // 新数据一个地块只有一个作物类型，"地块平均"类指标没有意义
+                        parcelShannon: 0,
+                        parcelSimpson: 0,
+                        parcelTypesPerKm2: 0,
+                        parcelUsable: 0
+                    },
                 series: (stats.series || []).map(item => ({
                     year: item.year, code: item.code, name: item.name, ratio: item.ratio
                 })),
@@ -2725,11 +2798,15 @@ const useMapStore =  defineStore('map',{
             }
         },
 
-        // 把要素记录算成统计结果
-        computeCropAnalysis:function(records, extent, years){
+        // 把要素记录算成统计结果。
+        // focusYear 是面板「统计年份」要看的那一年：框选时三年都会取回来算时间序列和
+        // 稳定性，但地块数 / 面积 / 各类型占比要按用户选的年份显示，不传就退回最新一年。
+        computeCropAnalysis:function(records, extent, years, focusYear){
             const sortedYears = (years || []).slice().sort((a, b) => a - b)
             // 面积在取数时已经按球面公式换算成平方公里，这里直接用
-            const latestYear = sortedYears.length ? sortedYears[sortedYears.length - 1] : null
+            const latestYear = sortedYears.includes(focusYear)
+                ? focusYear
+                : (sortedYears.length ? sortedYears[sortedYears.length - 1] : null)
             const latest = records.filter(r => r.year === latestYear)
 
             const typeMap = new Map()

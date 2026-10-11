@@ -1,12 +1,12 @@
 <template>
   <div id="bottom_right">
-    <!-- 框选开启时把「停止框选」也点亮成蓝底 -->
-    <module-tabs v-model="tab" :tabs="tabs" :active-id="roiActive ? 'identify' : ''"/>
+    <module-tabs v-model="tab" :tabs="tabs"/>
 
-    <crops-type v-if="tab === 'visual'"/>
-    <!-- 年份时间轴只属于「作物类型可视化」；种植分析看的是三年汇总，不需要切年份 -->
-    <crop-year-timeline v-if="tab === 'visual'"/>
-    <crop-analysis-panel v-if="tab === 'visual' || tab === 'analysis'" :tab="panelTab" hide-tabs/>
+    <!-- 交互识别：地图上先不显示任何作物，框选成功后只显示框内的分类 -->
+    <crops-type v-if="tab === 'identify' || tab === 'visual'"/>
+    <!-- 交互识别和作物类型可视化都要切年份；种植分析看三年汇总、时间序列看序列，不需要 -->
+    <crop-year-timeline v-if="tab === 'identify' || tab === 'visual'"/>
+    <crop-analysis-panel v-if="tab === 'identify' || tab === 'visual' || tab === 'analysis'" :tab="panelTab" hide-tabs/>
     <rotation-type v-if="tab === 'series'"/>
     <!-- 种植分析的稳定性图例，照原型放在右下 -->
     <legend-card
@@ -39,38 +39,34 @@ import PiIcon from '@/components/part/pi-icon.vue'
 const store = useMapStore()
 const { map, parcelRoiState, stabilitySelected } = storeToRefs(store)
 
-// 二级模块，名称与 figma 原型一致。
-// 「交互识别」本身就是框选开关，框选开着的时候按钮文案变成「停止框选」
-const tabs = computed(() => [
-  { id: 'identify', label: roiActive.value ? '停止框选' : '交互识别', icon: 'sprout' },
+// 二级模块。交互识别与作物类型可视化是两个独立模块：
+//   交互识别       —— 地图上不显示作物分类，画框识别后只显示框内
+//   作物类型可视化 —— 显示整幅作物分类，没有框选
+const tabs = [
+  { id: 'identify', label: '交互识别', icon: 'sprout' },
   { id: 'visual', label: '作物类型可视化', icon: 'layers' },
   { id: 'series', label: '作物时间序列', icon: 'chart' },
   { id: 'analysis', label: '种植分析', icon: 'asterisk' }
-])
-const tab = ref('visual')
+]
+const tab = ref('identify')
 
 // 二级模块 -> 分析面板内部页签
 const PANEL_TAB = { visual: 'visual', series: 'series', analysis: 'analysis' }
 const panelTab = computed(() => PANEL_TAB[tab.value] || 'visual')
 
-const roiActive = computed(() => parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied')
-const toggleRoi = () => store.toggleParcelRoi()
-
-// 「交互识别」页签本身就是框选开关：点一下开始/结束框选，
-// 视图落到「作物类型可视化」（这两个模块是一体的）
-watch(tab, value => {
+const applyTab = value => {
+  // 进「交互识别」就开框选：这时地图上不显示任何作物分类
   if (value === 'identify') {
-    store.toggleParcelRoi()
-    tab.value = 'visual'
-    return
-  }
-  // 离开「交互识别/作物类型可视化」就不再识别框选：整个撤掉，回到默认视图
-  if (value !== 'visual' && (parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied')) {
+    store.clearParcelRoi(false)
+    store.startParcelRoiDraw()
+  } else if (parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied') {
+    // 其它模块一律不带框选
     store.clearParcelRoi()
   }
-  // 作物类型可视化看逐年分类，作物时间序列看轮作类型，种植分析两层都不挂
+  // 交互识别 / 作物类型可视化看逐年分类，作物时间序列看轮作类型，种植分析看稳定性
   store.setCropTab(value)
-})
+}
+watch(tab, applyTab)
 
 // 原型里的稳定性分级图例
 const stabilityLegend = [
@@ -99,8 +95,8 @@ const setMapView = () => {
   // clearMap 会把子组件（crops-type）刚挂上的作物图层一起清掉，
   // 所以视图初始化完再补一次加载；addCropLayer 内部会先移除旧层，不会重复。
   store.reloadCropLayer()
-  // 从别的页面回来时，store 里的页签可能还停在上一状态，这里同步一次
-  store.setCropTab(tab.value)
+  // 从别的页面回来时，store 里的页签可能还停在上一状态，这里同步一次（默认进交互识别）
+  applyTab(tab.value)
 }
 
 onMounted(setMapView)
