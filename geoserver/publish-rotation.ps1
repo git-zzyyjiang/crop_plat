@@ -68,6 +68,21 @@ if (-not $ws) {
     Write-Host "    ok"
 }
 
+# The source shapefile is renamed between data versions, but the published
+# feature type keeps pointing at the OLD file. Drop the layer and every
+# feature type in the store first, so the new upload is what gets published.
+Write-Host "==> resetting old layer and feature types"
+Invoke-GeoServerRest -Method Delete -Uri "$rest/layers/${Workspace}:${Layer}?recurse=true" `
+    -ContentType 'application/json' -AllowMissing | Out-Null
+$oldTypes = Invoke-GeoServerRest -Method Get -Uri "$rest/workspaces/$Workspace/datastores/$Store/featuretypes.json" `
+    -ContentType 'application/json' -AllowMissing
+if ($oldTypes) {
+    foreach ($ft in $oldTypes.featureTypes.featureType) {
+        Invoke-GeoServerRest -Method Delete -Uri "$rest/workspaces/$Workspace/datastores/$Store/featuretypes/$($ft.name)?recurse=true" `
+            -ContentType 'application/json' -AllowMissing | Out-Null
+    }
+}
+
 if (-not (Test-Path -LiteralPath $SourceDir)) { throw "source folder not found: $SourceDir" }
 $shp = Get-ChildItem -LiteralPath $SourceDir -Filter '*.shp' | Select-Object -First 1
 if (-not $shp) { throw "no .shp found in $SourceDir" }

@@ -126,6 +126,61 @@ const round = (value, digits = 3) => {
   return Math.round(value * factor) / factor
 }
 
+// 网格图层配色：按每格作物种类数从浅到深
+const GRID_RAMP = [
+  '#EDF8E9', '#D9F0D3', '#BAE4B3', '#8FD08C', '#63B96B',
+  '#3D9E52', '#22833F', '#0B6B2E', '#00521F', '#003614'
+]
+
+// 生成 10km 网格图层的 SLD：一条规则对应一种作物种类数
+function buildGridSld() {
+  const rules = GRID_RAMP.map((color, index) => `        <Rule>
+          <Name>grid_${index + 1}</Name>
+          <Title>${index + 1} 种作物</Title>
+          <ogc:Filter>
+            <ogc:PropertyIsEqualTo>
+              <ogc:PropertyName>N_CROP</ogc:PropertyName>
+              <ogc:Literal>${index + 1}</ogc:Literal>
+            </ogc:PropertyIsEqualTo>
+          </ogc:Filter>
+          <PolygonSymbolizer>
+            <Fill>
+              <CssParameter name="fill">${color}</CssParameter>
+              <CssParameter name="fill-opacity">0.85</CssParameter>
+            </Fill>
+            <Stroke>
+              <CssParameter name="stroke">#FFFFFF</CssParameter>
+              <CssParameter name="stroke-width">0.4</CssParameter>
+              <CssParameter name="stroke-opacity">0.45</CssParameter>
+            </Stroke>
+          </PolygonSymbolizer>
+        </Rule>`).join('\n\n')
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- 由 scripts/grid-diversity.cjs 生成，不要手改。
+     10km 网格按每格作物种类数上色，颜色越深种类越多。 -->
+<StyledLayerDescriptor version="1.0.0"
+  xmlns="http://www.opengis.net/sld"
+  xmlns:ogc="http://www.opengis.net/ogc"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.opengis.net/sld http://schemas.opengis.net/sld/1.0.0/StyledLayerDescriptor.xsd">
+  <NamedLayer>
+    <Name>bh_crop_grid</Name>
+    <UserStyle>
+      <Name>grid-diversity-10</Name>
+      <Title>10km 网格作物种类数</Title>
+      <FeatureTypeStyle>
+
+${rules}
+
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>
+`
+}
+
 function main() {
   const dir = process.argv[2] || 'C:\\Users\\27814\\Desktop\\网格'
   const shp = fs.readdirSync(dir).find(name => name.toLowerCase().endsWith('.shp'))
@@ -144,6 +199,7 @@ function main() {
   let sumAreaHa = 0
   let validGrids = 0
   const areaByType = {}
+  const cropTypeHistogram = {}
   let lonMin = Infinity
   let latMin = Infinity
   let lonMax = -Infinity
@@ -152,6 +208,7 @@ function main() {
   for (let i = 0; i < recordCount; i++) {
     const box = boxes[i] || null
     const nCrop = num(i, 'N_CROP')
+    cropTypeHistogram[nCrop] = (cropTypeHistogram[nCrop] || 0) + 1
     const shannon = num(i, 'SHANNON')
     const simpson = num(i, 'SIMPSON')
     const density = num(i, 'DEN_KM2')
@@ -193,6 +250,9 @@ function main() {
     generatedAt: new Date().toISOString(),
     year: recordCount ? num(0, 'YEAR') : 2024,
     gridKm: 10,
+    // 图层样式里 1..10 种作物用的颜色，图例和地图共用这一份
+    palette: GRID_RAMP,
+    cropTypeHistogram,
     summary: {
       gridCount: recordCount,
       validGridCount: validGrids,
@@ -209,12 +269,16 @@ function main() {
 
   const outFile = path.join(__dirname, '..', 'public', 'static', 'gridDiversityStats.json')
   fs.writeFileSync(outFile, JSON.stringify(result) + '\n', 'utf8')
+  // 网格图层样式和统计同源，一起生成
+  const sldFile = path.join(__dirname, '..', 'geoserver', 'grid-diversity-10.sld')
+  fs.writeFileSync(sldFile, buildGridSld(), 'utf8')
 
   console.log(`grids=${recordCount} valid=${validGrids} areaHa=${result.summary.totalAreaHa}`)
   console.log(`mean cropTypes=${result.summary.meanCropTypes} shannon=${result.summary.meanShannon} simpson=${result.summary.meanSimpson}`)
   console.log(`mean density=${result.summary.meanDensity} dominant=${result.summary.meanDominantPct}%`)
   console.log(`lon/lat bbox = ${round(lonMin, 3)},${round(latMin, 3)} .. ${round(lonMax, 3)},${round(latMax, 3)}`)
   console.log(`written -> ${outFile}`)
+  console.log(`written -> ${sldFile}`)
 }
 
 main()

@@ -117,18 +117,29 @@ function readShpAreas(file, count) {
 // --- 主流程 -----------------------------------------------------------------
 const round1 = value => Math.round(value * 10) / 10
 
+// 年份目录可能写成 24 / 2024 / 2024年，自动认一下，换一批数据不用改脚本
+function resolveYearDir(root, year) {
+  const short = String(year).slice(2)
+  for (const name of [String(year), short, `${year}年`, `${short}年`]) {
+    const dir = path.join(root, name)
+    if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) return dir
+  }
+  throw new Error(`在 ${root} 下找不到 ${year} 的目录`)
+}
+
 function main() {
   const cutRoot = process.argv[2] || 'C:\\Users\\27814\\Desktop\\cut'
   const outFile = path.join(__dirname, '..', 'public', 'static', 'cutCropStats.json')
-  const yearDirs = [[2024, '24'], [2025, '25'], [2026, '26']]
+  const yearList = [2024, 2025, 2026]
 
   // 三年的 .shp 完全一致（同一次导出的地块边界），所以几何只读一次、
   // 行号就是同一个地块，跨年比较直接按行号来。
   const codesByYear = new Map()
   let areas = null
-  for (const [year, dir] of yearDirs) {
-    const dirPath = path.join(cutRoot, dir)
+  for (const year of yearList) {
+    const dirPath = resolveYearDir(cutRoot, year)
     const shp = fs.readdirSync(dirPath).find(name => name.toLowerCase().endsWith('.shp'))
+    if (!shp) throw new Error(`没有找到 .shp：${dirPath}`)
     const codes = readDbfCodes(path.join(dirPath, shp.replace(/\.shp$/i, '.dbf')))
     codesByYear.set(year, codes)
     if (!areas) areas = readShpAreas(path.join(dirPath, shp), codes.length)
@@ -136,7 +147,7 @@ function main() {
 
   const parcelCount = areas.length
   const years = {}
-  for (const [year] of yearDirs) {
+  for (const year of yearList) {
     const codes = codesByYear.get(year)
     const byType = new Map()
     let totalArea = 0
@@ -166,7 +177,7 @@ function main() {
   }
 
   // 每年主导作物（按面积占比）
-  const series = yearDirs.map(([year]) => {
+  const series = yearList.map(year => {
     const list = years[year].byType
     const top = list.reduce((best, item) => (item.areaKm2 > best.areaKm2 ? item : best), list[0])
     return { year, code: top.code, name: top.name, ratio: top.ratio }
@@ -176,24 +187,24 @@ function main() {
   const histogram = {}
   let changesSum = 0
   for (let i = 0; i < parcelCount; i++) {
-    const sequence = yearDirs.map(([year]) => codesByYear.get(year)[i])
+    const sequence = yearList.map(year => codesByYear.get(year)[i])
     let changes = 0
     for (let k = 1; k < sequence.length; k++) if (sequence[k] !== sequence[k - 1]) changes++
     histogram[changes] = (histogram[changes] || 0) + 1
     changesSum += changes
   }
 
-  const latest = yearDirs[yearDirs.length - 1][0]
+  const latest = yearList[yearList.length - 1]
   const ratios = years[latest].byType.map(item => item.ratio)
   const result = {
     generatedAt: new Date().toISOString(),
-    baselineYear: yearDirs[0][0],
+    baselineYear: yearList[0],
     types: CROP_TYPES,
     years,
     series,
     stability: {
-      baseline: yearDirs[0][0],
-      years: yearDirs.map(([year]) => year),
+      baseline: yearList[0],
+      years: yearList,
       parcelCount,
       averageChanges: parcelCount ? changesSum / parcelCount : null,
       histogram,
@@ -207,7 +218,7 @@ function main() {
     }
   }
 
-  for (const [year] of yearDirs) {
+  for (const year of yearList) {
     console.log(`${year}: parcels=${years[year].parcelCount} area=${years[year].totalAreaKm2} km2`)
   }
   console.log(`stability: avgChanges=${result.stability.averageChanges.toFixed(3)} histogram=${JSON.stringify(histogram)}`)

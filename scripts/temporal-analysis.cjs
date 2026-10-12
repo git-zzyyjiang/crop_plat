@@ -18,12 +18,15 @@ const path = require('path')
 
 const TOP_SEQUENCES = 10 // 轮作类型面板最多列几条
 
-// 轮作类型在图上用的颜色，按排名取，和 src/utils/crop-types.js 的 10 类作物色一致。
-// 改这里要同步改 crop-types.js，否则图例和地图对不上。
+// 轮作类型在图上用的颜色，按地块数排名取。
+// 前十种用的是参考作物配色，但最后一个灰蓝色和「其他」撞色，
+// 所以第 10 名换成靛蓝，和 OTHER_COLOR 的灰区分开。
 const ROTATION_COLORS = [
   '#F2D24B', '#E07B2E', '#A3D14A', '#3E9FE0', '#E86FA6',
-  '#35BFA0', '#9B72D9', '#D8544F', '#A98E6B', '#8C97A3'
+  '#35BFA0', '#9B72D9', '#D8544F', '#A98E6B', '#3F51B5'
 ]
+// 进不了前十的序列统一归到「其他」用这个颜色
+const OTHER_COLOR = '#7C8794'
 
 // 与 src/utils/crop-types.js 的短名保持一致，只用于 SLD 里的中文标题
 const CROP_SHORT = ['早熟谷物', '春季谷物', '玉米', '水稻', '油料', '饲草', '甜菜', '果园', '休耕', '其他']
@@ -32,8 +35,9 @@ const xmlEscape = value => String(value)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
 
-// 按 SEQUENCE 字段着色：只画进前十种，其余组合不匹配任何规则、不上色
-function buildRotationSld(items) {
+// 按 SEQUENCE 字段着色：前十种各一个颜色，剩下的统一画成「其他」。
+// 兜底规则不写 filter，放在最前面，后面的规则再覆盖上去。
+function buildRotationSld(items, otherCount) {
   const rules = items.map((item, index) => {
     const color = item.color
     const label = item.codes.map(code => CROP_SHORT[code - 1] || code).join('—')
@@ -60,9 +64,26 @@ function buildRotationSld(items) {
         </Rule>`
   }).join('\n\n')
 
+  const otherRule = `        <Rule>
+          <Name>rotation_other</Name>
+          <Title>其他</Title>
+          <PolygonSymbolizer>
+            <Fill>
+              <CssParameter name="fill">${OTHER_COLOR}</CssParameter>
+              <CssParameter name="fill-opacity">0.9</CssParameter>
+            </Fill>
+            <Stroke>
+              <CssParameter name="stroke">${OTHER_COLOR}</CssParameter>
+              <CssParameter name="stroke-width">0.15</CssParameter>
+              <CssParameter name="stroke-opacity">0.9</CssParameter>
+            </Stroke>
+          </PolygonSymbolizer>
+        </Rule>`
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- 由 scripts/temporal-analysis.cjs 生成，不要手改。
-     数据源：1009/parcel_temporal_analysis，按 SEQUENCE 取地块数前 ${items.length} 种。 -->
+     数据源：02/crop_temporal_analysis。按 SEQUENCE 取地块数前 ${items.length} 种单独上色，
+     其余 ${otherCount} 个地块统一画成「其他」。 -->
 <StyledLayerDescriptor version="1.0.0"
   xmlns="http://www.opengis.net/sld"
   xmlns:ogc="http://www.opengis.net/ogc"
@@ -73,8 +94,10 @@ function buildRotationSld(items) {
     <Name>bh_crop_rotation</Name>
     <UserStyle>
       <Name>crop-rotation-10</Name>
-      <Title>轮作类型（前 ${items.length} 种）</Title>
+      <Title>轮作类型（前 ${items.length} 种 + 其他）</Title>
       <FeatureTypeStyle>
+
+${otherRule}
 
 ${rules}
 
@@ -127,7 +150,7 @@ const round = (value, digits = 3) => {
 }
 
 function main() {
-  const dir = process.argv[2] || 'C:\\Users\\27814\\Desktop\\1009'
+  const dir = process.argv[2] || 'C:\\Users\\27814\\Desktop\\new\\new\\02'
   const dbfName = fs.readdirSync(dir).find(name => name.toLowerCase().endsWith('.dbf'))
   if (!dbfName) throw new Error(`没有找到 .dbf：${dir}`)
   const dbf = readDbf(path.join(dir, dbfName))
@@ -135,11 +158,6 @@ function main() {
 
   const sequenceCounts = new Map()
   const changesHistogram = {}
-  const typesHistogram = {}
-  const dominantCounts = {}
-  let areaHa = 0
-  let stabSum = 0
-  let stabCount = 0
   let shannonSum = 0
   let simpsonSum = 0
   let diversityCount = 0
@@ -150,18 +168,6 @@ function main() {
 
     const changes = readInt(i, 'CHG_BASE')
     if (changes !== null) changesHistogram[changes] = (changesHistogram[changes] || 0) + 1
-
-    const types = readInt(i, 'N_TYPES')
-    if (types !== null) typesHistogram[types] = (typesHistogram[types] || 0) + 1
-
-    const dominant = readInt(i, 'DOM_CROP')
-    if (dominant !== null) dominantCounts[dominant] = (dominantCounts[dominant] || 0) + 1
-
-    const area = readFloat(i, 'AREA_HA')
-    if (area !== null) areaHa += area
-
-    const stab = readFloat(i, 'STAB_IDX')
-    if (stab !== null) { stabSum += stab; stabCount++ }
 
     const shannon = readFloat(i, 'SHANNON')
     const simpson = readFloat(i, 'SIMPSON')
@@ -186,6 +192,8 @@ function main() {
     ...item,
     color: ROTATION_COLORS[index % ROTATION_COLORS.length]
   }))
+  // 进不了前十的序列统一归到「其他」，地图上也给它一个颜色
+  const otherCount = recordCount - topSequences.reduce((sum, item) => sum + item.count, 0)
 
   let changesSum = 0
   Object.entries(changesHistogram).forEach(([changes, count]) => {
@@ -195,22 +203,19 @@ function main() {
   const result = {
     generatedAt: new Date().toISOString(),
     parcelCount: recordCount,
-    totalAreaHa: round(areaHa, 1),
     sequenceTotal: sequences.length,
     topSequences,
+    other: { count: otherCount, ratio: round(otherCount / recordCount, 5), color: OTHER_COLOR },
     stability: {
       baseline: 2024,
       years: [2024, 2025, 2026],
       changes: changesHistogram,
       averageChanges: round(changesSum / recordCount, 3),
-      stableShare: round((changesHistogram[0] || 0) / recordCount, 4),
-      averageStabilityIndex: stabCount ? round(stabSum / stabCount, 3) : null
+      stableShare: round((changesHistogram[0] || 0) / recordCount, 4)
     },
     diversity: {
-      typesHistogram,
       averageShannon: diversityCount ? round(shannonSum / diversityCount, 3) : null,
-      averageSimpson: diversityCount ? round(simpsonSum / diversityCount, 3) : null,
-      dominant: dominantCounts
+      averageSimpson: diversityCount ? round(simpsonSum / diversityCount, 3) : null
     }
   }
 
@@ -218,11 +223,11 @@ function main() {
   fs.writeFileSync(outFile, JSON.stringify(result, null, 2) + '\n', 'utf8')
   // 图层样式和统计同源，一起生成，避免配色漂移
   const sldFile = path.join(__dirname, '..', 'geoserver', 'crop-rotation-10.sld')
-  fs.writeFileSync(sldFile, buildRotationSld(topSequences), 'utf8')
+  fs.writeFileSync(sldFile, buildRotationSld(topSequences, otherCount), 'utf8')
 
-  console.log(`parcels=${recordCount} sequences=${sequences.length} totalAreaHa=${result.totalAreaHa}`)
+  console.log(`parcels=${recordCount} sequences=${sequences.length} other=${otherCount}`)
   console.log(`changes=${JSON.stringify(changesHistogram)} avg=${result.stability.averageChanges} stable=${result.stability.stableShare}`)
-  console.log(`types=${JSON.stringify(typesHistogram)} shannon=${result.diversity.averageShannon} simpson=${result.diversity.averageSimpson}`)
+  console.log(`shannon=${result.diversity.averageShannon} simpson=${result.diversity.averageSimpson}`)
   console.log('top sequences:')
   result.topSequences.forEach(item => console.log(`  ${item.sequence}  ${item.count}`))
   console.log(`written -> ${outFile}`)

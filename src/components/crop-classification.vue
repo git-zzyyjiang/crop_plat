@@ -8,9 +8,12 @@
     <crop-year-timeline v-if="tab === 'identify' || tab === 'visual'"/>
     <crop-analysis-panel v-if="tab === 'identify' || tab === 'visual' || tab === 'analysis'" :tab="panelTab" hide-tabs/>
     <rotation-type v-if="tab === 'series'"/>
+    <!-- 网格视图的颜色说明 -->
+    <grid-legend v-if="tab === 'analysis' && analysisView === 'grid'"/>
     <!-- 种植分析的稳定性图例，照原型放在右下 -->
+    <!-- 稳定性图例只在种植分析的地块视图下有意义 -->
     <legend-card
-      v-if="tab === 'analysis'"
+      v-if="tab === 'analysis' && analysisView === 'parcel'"
       title="种植稳定性"
       :items="stabilityLegend"
       :active-value="stabilitySelected"
@@ -32,12 +35,14 @@ import CropsType from '@/components/part/crops-type.vue'
 import CropYearTimeline from '@/components/part/crop-year-timeline.vue'
 import CropAnalysisPanel from '@/components/part/crop-analysis-panel.vue'
 import RotationType from '@/components/part/rotation-type.vue'
+import GridLegend from '@/components/part/grid-legend.vue'
 import LegendCard from '@/components/part/legend-card.vue'
 import ScanProgress from '@/components/part/scan-progress.vue'
 import PiIcon from '@/components/part/pi-icon.vue'
+import { STABILITY_CLASSES } from '@/utils/crop-types'
 
 const store = useMapStore()
-const { map, parcelRoiState, stabilitySelected } = storeToRefs(store)
+const { map, parcelRoiState, stabilitySelected, analysisView } = storeToRefs(store)
 
 // 二级模块。交互识别与作物类型可视化是两个独立模块：
 //   交互识别       —— 地图上不显示作物分类，画框识别后只显示框内
@@ -68,12 +73,12 @@ const applyTab = value => {
 }
 watch(tab, applyTab)
 
-// 原型里的稳定性分级图例
-const stabilityLegend = [
-  { value: 0, label: '0 次（三年不变）', color: '#58c98a' },
-  { value: 1, label: '1 次', color: '#f2c14e' },
-  { value: 2, label: '2 次（每年都变）', color: '#e2574c' }
-]
+// 稳定性分级图例，颜色和地图样式 crop-stability-3 同源
+const stabilityLegend = STABILITY_CLASSES.map(item => ({
+  value: item.value,
+  label: item.label,
+  color: item.color
+}))
 
 const setMapView = () => {
   if (!map.value || !map.value.setView) {
@@ -104,6 +109,7 @@ onBeforeUnmount(() => {
   store.cancelCropAnalysisRequest()
   store.clearCropAnalysisBlink()
   store.removeRotationLayer()
+  store.removeGridLayer()
 })
 </script>
 

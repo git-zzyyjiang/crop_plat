@@ -79,6 +79,43 @@
 
         <!-- 种植分析 -->
         <template v-else>
+          <!-- 地块视图 / 网格视图 -->
+          <div class="ca-subtabs ca-view-switch">
+            <button
+              class="ca-subtab"
+              :class="{ active: analysisView === 'parcel' }"
+              @click="store.setAnalysisView('parcel')"
+            >地块视图</button>
+            <button
+              class="ca-subtab"
+              :class="{ active: analysisView === 'grid' }"
+              @click="store.setAnalysisView('grid')"
+            >网格视图</button>
+          </div>
+
+          <!-- 网格视图：10km 网格的汇总 -->
+          <template v-if="analysisView === 'grid'">
+            <div class="ca-sub">网格多样性（10km）</div>
+            <div class="ca-row"><span>网格数</span><b>{{ formatCount(gridStats.gridCount) }}</b></div>
+            <div class="ca-row">
+              <span>平均每格作物种类数</span>
+              <b>{{ gridStats.meanCropTypes.toFixed(2) }} 种/格</b>
+            </div>
+            <div class="ca-row"><span>平均 Shannon</span><b>{{ gridStats.shannon.toFixed(3) }}</b></div>
+            <div class="ca-row"><span>平均 Simpson</span><b>{{ gridStats.simpson.toFixed(3) }}</b></div>
+            <div class="ca-row">
+              <span>平均地块密度</span>
+              <b>{{ gridStats.meanDensity.toFixed(2) }} 个/km²</b>
+            </div>
+            <div class="ca-row">
+              <span>平均优势作物占比</span>
+              <b>{{ gridStats.meanDominantPct.toFixed(1) }}%</b>
+            </div>
+            <p class="ca-tip">按 10km 网格统计，地图上按每格的作物种类数上色。</p>
+          </template>
+
+          <!-- 地块视图：稳定性 / 多样性 -->
+          <template v-else>
           <div class="ca-subtabs">
             <button
               class="ca-subtab"
@@ -118,6 +155,22 @@
           <div class="ca-row" v-for="(count, changes) in result.stability.histogram" :key="changes">
             <span>改变 {{ changes }} 次</span><b>{{ count }} 个地块</b>
           </div>
+
+          <!-- 稳定性类型占比：一条堆叠条 + 百分比明细 -->
+          <div class="ca-sub">稳定性类型占比</div>
+          <div class="ca-stack">
+            <span
+              v-for="item in stabilityBreakdown"
+              :key="item.value"
+              class="ca-stack-seg"
+              :style="{ width: (item.ratio * 100) + '%', backgroundColor: item.color }"
+              :title="item.label + ' ' + (item.ratio * 100).toFixed(1) + '%'"
+            ></span>
+          </div>
+          <div class="ca-row" v-for="item in stabilityBreakdown" :key="item.value">
+            <span><i class="ca-dot" :style="{ backgroundColor: item.color }"></i>{{ item.label }}</span>
+            <b>{{ (item.ratio * 100).toFixed(1) }}%</b>
+          </div>
           <p class="ca-tip" v-if="!result.stability.comparable">
             稳定性需要至少两年数据，当前只取到 {{ result.years.length }} 年
           </p>
@@ -126,8 +179,24 @@
           <template v-else>
           <div class="ca-sub">种植多样性</div>
           <div class="ca-row"><span>作物种类数</span><b>{{ result.diversity.richness }}</b></div>
-          <!-- 网格统计可用时按 10km 网格展示，数据源 grid_2024_10km_crop_diversity -->
-          <template v-if="result.diversity.fromGrid">
+          <!-- 地块视图：逐地块三年序列的 Shannon / Simpson 平均 -->
+          <template v-if="result.diversityParcel">
+            <div class="ca-row">
+              <span>Shannon（地块平均）</span>
+              <b>{{ result.diversityParcel.shannon.toFixed(3) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>Simpson（地块平均）</span>
+              <b>{{ result.diversityParcel.simpson.toFixed(3) }}</b>
+            </div>
+            <div class="ca-row">
+              <span>参与统计地块数</span>
+              <b>{{ formatCount(result.diversityParcel.parcelCount) }}</b>
+            </div>
+            <p class="ca-tip">按每个地块三年序列的多样性指标取平均；网格口径见「网格视图」。</p>
+          </template>
+          <!-- 没有地块指标时退回网格统计 -->
+          <template v-else-if="result.diversity.fromGrid">
             <div class="ca-row">
               <span>{{ result.diversity.gridKm }}km 网格数</span>
               <b>{{ formatCount(result.diversity.gridCount) }}</b>
@@ -170,6 +239,7 @@
             <p class="ca-tip">网格多样性统计不可用，这里显示按面积占比算的整体指标。</p>
           </template>
           </template>
+          </template>
         </template>
       </template>
 
@@ -184,6 +254,7 @@ import { storeToRefs } from 'pinia'
 import useMapStore from '@/stores/map'
 import { usePanelDrag } from '@/composables/usePanelDrag'
 import PiIcon from '@/components/part/pi-icon.vue'
+import { STABILITY_CLASSES } from '@/utils/crop-types'
 
 const store = useMapStore()
 const { panel, panelStyle, startDrag } = usePanelDrag()
@@ -193,7 +264,8 @@ const {
   cropAnalysisNotice,
   cropAnalysisScope,
   cropScanPhase,
-  parcelRoiExtent
+  parcelRoiExtent,
+  analysisView
 } = storeToRefs(store)
 
 const tabs = [
@@ -243,12 +315,50 @@ const avgChanges = computed(() => {
   return `${stability.averageChanges.toFixed(1)} 次`
 })
 
+// 稳定性三级的占比明细，颜色和地图、图例同源
+const stabilityBreakdown = computed(() => {
+  const stability = result.value && result.value.stability
+  if(!stability || !stability.parcelCount) return []
+  return STABILITY_CLASSES.map(item => {
+    const count = Number((stability.histogram || {})[item.value]) || 0
+    return { ...item, count, ratio: count / stability.parcelCount }
+  })
+})
+
+// 网格视图的汇总：框选时用选区内的格网，否则用全域网格统计
+const gridStats = computed(() => {
+  const diversity = result.value && result.value.diversity
+  if(diversity && diversity.fromGrid){
+    return {
+      gridCount: diversity.gridCount,
+      meanCropTypes: diversity.meanCropTypes,
+      shannon: diversity.shannon,
+      simpson: diversity.simpson,
+      meanDensity: diversity.meanDensity,
+      meanDominantPct: diversity.meanDominantPct
+    }
+  }
+  const summary = store.gridStats && store.gridStats.summary
+  if(summary){
+    return {
+      gridCount: summary.gridCount,
+      meanCropTypes: summary.meanCropTypes,
+      shannon: summary.meanShannon,
+      simpson: summary.meanSimpson,
+      meanDensity: summary.meanDensity,
+      meanDominantPct: summary.meanDominantPct
+    }
+  }
+  return { gridCount: 0, meanCropTypes: 0, shannon: 0, simpson: 0, meanDensity: 0, meanDominantPct: 0 }
+})
+
 const iconOf = code => store.cropAnalysisTypeInfo(code).icon
 const colorOf = code => store.cropAnalysisTypeInfo(code).color
 const formatCount = value => Number(value || 0).toLocaleString('zh-CN')
 
 onMounted(() => {
   store.getCropAnalysisYears()
+  store.getGridStats()
 })
 </script>
 
@@ -435,6 +545,35 @@ onMounted(() => {
   font-weight: 600;
   background-image: linear-gradient(#2c93ff, #156ee4);
   border-color: transparent;
+}
+
+/* 地块视图 / 网格视图切换 */
+.ca-view-switch {
+  margin-bottom: 12px;
+}
+
+/* 稳定性类型占比：一条堆叠条 */
+.ca-stack {
+  display: flex;
+  height: 12px;
+  margin: 6px 0 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #eef4fd;
+}
+
+.ca-stack-seg {
+  display: block;
+  height: 100%;
+}
+
+.ca-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: middle;
 }
 
 /* 以某年为基准的说明条 */

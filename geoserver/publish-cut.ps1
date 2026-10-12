@@ -31,11 +31,18 @@ $rest = "$Server/geoserver/rest"
 $pair = "$User`:$Password"
 $auth = @{ Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair)) }
 
-$years = @(
-    @{ dir = '24'; year = 2024 },
-    @{ dir = '25'; year = 2025 },
-    @{ dir = '26'; year = 2026 }
-)
+$yearList = @(2024, 2025, 2026)
+
+# Year folders may be named 24 or 2024 -- accept both.
+function Resolve-YearDir {
+    param([string]$Root, [int]$Year)
+    $short = $Year.ToString().Substring(2)
+    foreach ($name in @("$Year", $short)) {
+        $candidate = Join-Path $Root $name
+        if (Test-Path -LiteralPath $candidate) { return $candidate }
+    }
+    throw "year folder for $Year not found under $Root"
+}
 
 function Invoke-Rest {
     param([string]$Method, [string]$Uri, [string]$ContentType, $Body, [switch]$AllowMissing)
@@ -50,6 +57,26 @@ function Invoke-Rest {
     }
 }
 
+# The source shapefile is renamed between data versions, but the published
+# feature type keeps pointing at the OLD file. Drop the layer and every
+# feature type in the store first, so the new upload is what gets published.
+function Remove-PublishedLayer {
+    param([string]$LayerName)
+    Invoke-Rest -Method Delete -Uri "$rest/layers/${Workspace}:${LayerName}?recurse=true" `
+        -ContentType 'application/json' -AllowMissing | Out-Null
+}
+
+function Remove-StoreFeatureTypes {
+    param([string]$StoreName)
+    $list = Invoke-Rest -Method Get -Uri "$rest/workspaces/$Workspace/datastores/$StoreName/featuretypes.json" `
+        -ContentType 'application/json' -AllowMissing
+    if (-not $list) { return }
+    foreach ($ft in $list.featureTypes.featureType) {
+        Invoke-Rest -Method Delete -Uri "$rest/workspaces/$Workspace/datastores/$StoreName/featuretypes/$($ft.name)?recurse=true" `
+            -ContentType 'application/json' -AllowMissing | Out-Null
+    }
+}
+
 Write-Host "==> checking workspace $Workspace"
 $ws = Invoke-Rest -Method Get -Uri "$rest/workspaces/$Workspace" -ContentType 'application/json' -AllowMissing
 if (-not $ws) {
@@ -60,14 +87,17 @@ if (-not $ws) {
     Write-Host "    ok"
 }
 
-foreach ($item in $years) {
-    $year = $item.year
-    $srcDir = Join-Path (Join-Path $CutRoot $item.dir) ''
+foreach ($year in $yearList) {
+    $srcDir = Resolve-YearDir -Root $CutRoot -Year $year
     $shp = Get-ChildItem -LiteralPath $srcDir -Filter '*.shp' | Select-Object -First 1
     if (-not $shp) { throw "no .shp found in $srcDir" }
     $native = [IO.Path]::GetFileNameWithoutExtension($shp.Name)
     $store = "cut_$year"
     $layer = "bh_crop_class_$year"
+
+    Write-Host "==> $year resetting old layer and feature types"
+    Remove-PublishedLayer -LayerName $layer
+    Remove-StoreFeatureTypes -StoreName $store
 
     Write-Host "==> $year zipping $($shp.Name)"
     $zip = Join-Path $env:TEMP "cut_$year.zip"
@@ -105,8 +135,8 @@ if (-not $styleDone) {
         -ContentType 'application/vnd.ogc.sld+xml; charset=UTF-8' -Body $styleBody | Out-Null
 }
 
-foreach ($item in $years) {
-    $layer = "bh_crop_class_$($item.year)"
+foreach ($year in $yearList) {
+    $layer = "bh_crop_class_$year"
     Write-Host "==> applying $StyleName to $layer"
     $body = @{ layer = @{ defaultStyle = @{ name = $StyleName; workspace = $Workspace } } } | ConvertTo-Json -Depth 5
     Invoke-Rest -Method Put -Uri "$rest/layers/${Workspace}:$layer" -ContentType 'application/json' -Body $body | Out-Null

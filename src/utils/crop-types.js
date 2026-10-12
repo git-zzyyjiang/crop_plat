@@ -33,6 +33,17 @@ export const CROP_ROTATION_LAYER = 'agri-agent:bh_crop_rotation'
 export const CROP_ROTATION_STYLE = 'agri-agent:crop-rotation-10'
 // 同一图层另一套样式：按 CHG_BASE 分 0/1/2 三级（种植分析页签用）
 export const CROP_STABILITY_STYLE = 'agri-agent:crop-stability-3'
+// 10km 网格图层与样式（03 数据发布上去的，种植分析的「网格视图」用）
+export const CROP_GRID_LAYER = 'agri-agent:bh_crop_grid'
+export const CROP_GRID_STYLE = 'agri-agent:grid-diversity-10'
+
+// 种植稳定性三级。颜色要和 geoserver/crop-stability-3.sld 一致，
+// 图例、面板占比条、地图配色共用这一份
+export const STABILITY_CLASSES = [
+  { value: 0, label: '0 次（三年不变）', short: '0 次', color: '#58C98A' },
+  { value: 1, label: '1 次', short: '1 次', color: '#F2C14E' },
+  { value: 2, label: '2 次（每年都变）', short: '2 次', color: '#E2574C' }
+]
 // 新数据一行就是一个地块，用来跨年比对地块的身份
 export const CROP_PARCEL_FIELD = 'FID_1'
 export const CROP_TYPE_FIELD = 'Max_value'
@@ -68,10 +79,20 @@ export const cropFilterExpression = codes => {
   return `${CROP_TYPE_FIELD} IN (${list.join(',')})`
 }
 
-// 点某个轮作类型时，只把该 SEQUENCE 的地块取回来
-export const rotationFilterExpression = sequence => {
+// 轮作图例里「其他」这一项的内部标识
+export const ROTATION_OTHER_KEY = '__other__'
+
+// 点某个轮作类型时只取该 SEQUENCE 的地块；
+// 点「其他」时取不在前十里的所有序列（topSequences 由调用方传入）
+export const rotationFilterExpression = (sequence, topSequences) => {
   if (!sequence) return ''
-  return `SEQUENCE IN ('${String(sequence).replace(/'/g, "''")}')`
+  const quote = value => `'${String(value).replace(/'/g, "''")}'`
+  if (sequence === ROTATION_OTHER_KEY) {
+    const list = (topSequences || []).filter(Boolean).map(quote)
+    if (!list.length) return ''
+    return `SEQUENCE NOT IN (${list.join(',')})`
+  }
+  return `SEQUENCE IN (${quote(sequence)})`
 }
 
 // 点某个稳定性分级时，只把该分级的地块取回来

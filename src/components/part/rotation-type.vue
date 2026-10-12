@@ -23,7 +23,7 @@
 
     <p class="rt-note">
       <template v-if="items.length">
-        2024—2026 三年序列，共 {{ totalText }} 种组合，这里按地块数取前 {{ items.length }} 种。
+        2024—2026 三年序列，共 {{ totalText }} 种组合，前十种单独列出，其余归入「其他」。
       </template>
       <template v-else>正在读取轮作数据…</template>
     </p>
@@ -35,7 +35,7 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePanelDrag } from '@/composables/usePanelDrag'
 import useMapStore from '@/stores/map'
-import { cropShortName } from '@/utils/crop-types'
+import { cropShortName, ROTATION_OTHER_KEY } from '@/utils/crop-types'
 
 const store = useMapStore()
 const { rotationSelected } = storeToRefs(store)
@@ -52,12 +52,23 @@ const totalText = computed(() => Number((stats.value && stats.value.sequenceTota
 // 颜色也从同一份数据来，和地图上的 crop-rotation-10 样式一致
 const items = computed(() => {
   const list = (stats.value && stats.value.topSequences) || []
-  return list.map(item => ({
+  const rows = list.map(item => ({
     sequence: item.sequence,
     color: item.color,
     label: item.codes.map(cropShortName).join('—'),
     countText: Number(item.count).toLocaleString('zh-CN')
   }))
+  // 进不了前十的序列在图上和这里统一叫「其他」
+  const other = stats.value && stats.value.other
+  if (other) {
+    rows.push({
+      sequence: ROTATION_OTHER_KEY,
+      color: other.color,
+      label: '其他',
+      countText: Number(other.count).toLocaleString('zh-CN')
+    })
+  }
+  return rows
 })
 
 onMounted(async () => {

@@ -44,6 +44,7 @@ import {
     CROP_TYPES, CROP_YEARS, CROP_STYLE_NAME, CROP_STATS_URL, CROP_TEMPORAL_STATS_URL,
     CROP_GRID_STATS_URL,
     CROP_ROTATION_LAYER, CROP_ROTATION_STYLE, CROP_STABILITY_STYLE,
+    CROP_GRID_LAYER, CROP_GRID_STYLE,
     CROP_PARCEL_FIELD, CROP_TYPE_FIELD,
     cropLayerName, cropTypeName, cropFilterExpression,
     rotationFilterExpression, stabilityFilterExpression
@@ -175,6 +176,8 @@ const useMapStore =  defineStore('map',{
             rotationSelected:'',    // 选中的轮作序列，空串表示前十种全显示
             stabilitySelected:'',   // 选中的稳定性分级 0/1/2，空串表示三级全显示
             rotationLayer:null,     // 分析图层：作物时间序列看轮作类型，种植分析看稳定性
+            analysisView:'parcel',  // 种植分析：parcel 地块视图 / grid 网格视图
+            gridLayer:null,         // 10km 网格图层（种植分析的网格视图）
             imageryInfo:[],
             topoInfo:[], // 地形图信息
             yearPlayer: {},
@@ -542,9 +545,60 @@ const useMapStore =  defineStore('map',{
             this.cropTab = tab
             if(!this.map) return
             if(this.cropLayer && this.cropLayer.setVisible) this.cropLayer.setVisible(this.shouldShowCropLayer())
-            // 作物时间序列和种植分析共用一份发布好的 1009 图层，换的是样式和筛选条件
-            if(tab === 'series' || tab === 'analysis') this.reloadRotationLayer()
-            else this.removeRotationLayer()
+            if(tab === 'series'){
+                // 作物时间序列：轮作类型
+                this.removeGridLayer()
+                this.reloadRotationLayer()
+            }else if(tab === 'analysis'){
+                // 种植分析：地块视图看稳定性，网格视图看 10km 网格
+                this.reloadAnalysisLayer()
+            }else{
+                this.removeRotationLayer()
+                this.removeGridLayer()
+            }
+        },
+
+        // 种植分析的两种视图（地块 / 网格）切换
+        setAnalysisView:function(view){
+            this.analysisView = view === 'grid' ? 'grid' : 'parcel'
+            if(this.cropTab === 'analysis') this.reloadAnalysisLayer()
+        },
+
+        reloadAnalysisLayer:function(){
+            if(this.analysisView === 'grid'){
+                this.removeRotationLayer()
+                this.reloadGridLayer()
+            }else{
+                this.removeGridLayer()
+                this.reloadRotationLayer()
+            }
+        },
+
+        // 10km 网格图层：按每格的作物种类数上色
+        reloadGridLayer:function(){
+            if(!this.map || !this.map.addLayer) return
+            const source = new TileWMS({
+                url:`${this.baseUrl}/geoserver/agri-agent/wms`,
+                params: {
+                    LAYERS: CROP_GRID_LAYER,
+                    VERSION: '1.1.1',
+                    TILED: true,
+                    STYLES: CROP_GRID_STYLE
+                },
+                projection:'EPSG:4326',
+                serverType:'geoserver'
+            })
+            const layer = new Tile({ source, className: 'ol-layer crop-grid-layer' })
+            this.removeGridLayer()
+            this.gridLayer = markRaw(layer)
+            this.map.addLayer(layer)
+        },
+
+        removeGridLayer:function(){
+            if(this.gridLayer && this.map && this.map.removeLayer){
+                this.map.removeLayer(this.gridLayer)
+            }
+            this.gridLayer = null
         },
 
         // 点某个轮作类型只看这一类，再点一次回到前十种全部
@@ -568,9 +622,11 @@ const useMapStore =  defineStore('map',{
                 TILED: true,
                 STYLES: isAnalysis ? CROP_STABILITY_STYLE : CROP_ROTATION_STYLE
             }
+            const topSequences = ((this.cropTemporalStats || {}).topSequences || [])
+                .map(item => item.sequence)
             const filter = isAnalysis
                 ? stabilityFilterExpression(this.stabilitySelected)
-                : rotationFilterExpression(this.rotationSelected)
+                : rotationFilterExpression(this.rotationSelected, topSequences)
             if(filter) params.CQL_FILTER = filter
             const source = new TileWMS({
                 url:`${this.baseUrl}/geoserver/agri-agent/wms`,
@@ -2779,6 +2835,15 @@ const useMapStore =  defineStore('map',{
                         parcelTypesPerKm2: 0,
                         parcelUsable: 0
                     },
+                // 地块视图的多样性：用 02 数据里逐地块的 Shannon / Simpson 平均值
+                diversityParcel: temporal && temporal.diversity
+                    ? {
+                        richness: byType.filter(item => item.count > 0).length,
+                        shannon: temporal.diversity.averageShannon,
+                        simpson: temporal.diversity.averageSimpson,
+                        parcelCount: temporal.parcelCount
+                    }
+                    : null,
                 series: (stats.series || []).map(item => ({
                     year: item.year, code: item.code, name: item.name, ratio: item.ratio
                 })),

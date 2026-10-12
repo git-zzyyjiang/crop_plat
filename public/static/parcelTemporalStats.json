@@ -1,62 +1,61 @@
 {
-  "generatedAt": "2026-10-10T12:09:41.062Z",
+  "generatedAt": "2026-10-12T06:56:11.075Z",
   "parcelCount": 354512,
-  "totalAreaHa": 1759743.5,
-  "sequenceTotal": 817,
+  "sequenceTotal": 178,
   "topSequences": [
     {
-      "sequence": "10-10-10",
+      "sequence": "6-6-6",
       "codes": [
-        10,
-        10,
-        10
+        6,
+        6,
+        6
       ],
-      "count": 30427,
-      "ratio": 0.08583,
+      "count": 67341,
+      "ratio": 0.18995,
       "color": "#F2D24B"
     },
     {
-      "sequence": "3-7-3",
+      "sequence": "3-3-3",
       "codes": [
         3,
-        7,
+        3,
         3
       ],
-      "count": 17100,
-      "ratio": 0.04824,
+      "count": 66427,
+      "ratio": 0.18738,
       "color": "#E07B2E"
     },
     {
-      "sequence": "10-10-6",
+      "sequence": "2-2-2",
       "codes": [
-        10,
-        10,
-        6
+        2,
+        2,
+        2
       ],
-      "count": 15926,
-      "ratio": 0.04492,
+      "count": 17620,
+      "ratio": 0.0497,
       "color": "#A3D14A"
     },
     {
-      "sequence": "6-10-6",
+      "sequence": "1-1-1",
       "codes": [
-        6,
-        10,
-        6
+        1,
+        1,
+        1
       ],
-      "count": 9743,
-      "ratio": 0.02748,
+      "count": 16129,
+      "ratio": 0.0455,
       "color": "#3E9FE0"
     },
     {
-      "sequence": "10-10-8",
+      "sequence": "5-5-5",
       "codes": [
-        10,
-        10,
-        8
+        5,
+        5,
+        5
       ],
-      "count": 9400,
-      "ratio": 0.02652,
+      "count": 15510,
+      "ratio": 0.04375,
       "color": "#E86FA6"
     },
     {
@@ -66,55 +65,60 @@
         8,
         8
       ],
-      "count": 8402,
-      "ratio": 0.0237,
+      "count": 13033,
+      "ratio": 0.03676,
       "color": "#35BFA0"
     },
     {
-      "sequence": "6-10-8",
+      "sequence": "6-6-3",
       "codes": [
         6,
-        10,
-        8
+        6,
+        3
       ],
-      "count": 8237,
-      "ratio": 0.02323,
+      "count": 11332,
+      "ratio": 0.03197,
       "color": "#9B72D9"
     },
     {
-      "sequence": "6-6-8",
+      "sequence": "1-1-6",
       "codes": [
-        6,
-        6,
-        8
+        1,
+        1,
+        6
       ],
-      "count": 8105,
-      "ratio": 0.02286,
+      "count": 8425,
+      "ratio": 0.02377,
       "color": "#D8544F"
     },
     {
-      "sequence": "6-10-10",
+      "sequence": "3-3-1",
       "codes": [
-        6,
-        10,
-        10
+        3,
+        3,
+        1
       ],
-      "count": 7490,
-      "ratio": 0.02113,
+      "count": 7386,
+      "ratio": 0.02083,
       "color": "#A98E6B"
     },
     {
-      "sequence": "8-10-8",
+      "sequence": "4-4-4",
       "codes": [
-        8,
-        10,
-        8
+        4,
+        4,
+        4
       ],
-      "count": 7285,
-      "ratio": 0.02055,
-      "color": "#8C97A3"
+      "count": 7340,
+      "ratio": 0.0207,
+      "color": "#3F51B5"
     }
   ],
+  "other": {
+    "count": 123969,
+    "ratio": 0.34969,
+    "color": "#7C8794"
+  },
   "stability": {
     "baseline": 2024,
     "years": [
@@ -123,33 +127,15 @@
       2026
     ],
     "changes": {
-      "0": 53567,
-      "1": 138826,
-      "2": 162119
+      "0": 208480,
+      "1": 64012,
+      "2": 82020
     },
-    "averageChanges": 1.306,
-    "stableShare": 0.1511,
-    "averageStabilityIndex": 0.347
+    "averageChanges": 0.643,
+    "stableShare": 0.5881
   },
   "diversity": {
-    "typesHistogram": {
-      "1": 53567,
-      "2": 195134,
-      "3": 105811
-    },
-    "averageShannon": 0.678,
-    "averageSimpson": 0.444,
-    "dominant": {
-      "1": 731,
-      "2": 9796,
-      "3": 74725,
-      "4": 2663,
-      "5": 5559,
-      "6": 58363,
-      "7": 6200,
-      "8": 82457,
-      "9": 3008,
-      "10": 111010
-    }
+    "averageShannon": 0.322,
+    "averageSimpson": 0.212
   }
 }
