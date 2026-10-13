@@ -235,18 +235,53 @@ async function syncLayers(){
         if(!alive() || token!==revision) return
         const imagery=viewer.imageryLayers.addImageryProvider(provider);imagery.alpha=layer.getOpacity();resources.set(layer,{imagery})
       }else if(source.getFeatures && source.getFeatures().length){
-        const features=source.getFeatures(),format=new GeoJSON()
-        const data=format.writeFeaturesObject(features,{featureProjection:store.map.getView().getProjection(),dataProjection:'EPSG:4326'})
+        const sourceFeatures=source.getFeatures(),format=new GeoJSON()
         const styleOf=feature=>{const fn=layer.getStyleFunction?.();const styles=fn?.(feature,store.map.getView().getResolution());return Array.isArray(styles) ? styles[0] : styles}
+        // 只同步当前比例尺下真正有样式的要素，避免被二维样式隐藏的
+        // 标签点在 Cesium 中退化成默认蓝色图钉。
+        const styledFeatures=sourceFeatures.map(feature=>({feature,style:styleOf(feature)})).filter(item=>item.style)
+        const features=styledFeatures.map(item=>item.feature)
+        if(!features.length) continue
+        const data=format.writeFeaturesObject(features,{featureProjection:store.map.getView().getProjection(),dataProjection:'EPSG:4326'})
         data.features.forEach((feature,index)=>{
-          const style=styleOf(features[index]);feature.properties={...feature.properties,__fill:style?.getFill()?.getColor() || null,__stroke:style?.getStroke()?.getColor() || null,__width:style?.getStroke()?.getWidth() || 1}
+          const style=styledFeatures[index].style,textStyle=style?.getText?.(),label=textStyle?.getText?.()
+          feature.properties={...feature.properties,
+            __fill:style?.getFill()?.getColor() || null,
+            __stroke:style?.getStroke()?.getColor() || null,
+            __width:style?.getStroke()?.getWidth() || 1,
+            __label:label === undefined || label === null ? null : String(label),
+            __labelFill:textStyle?.getFill?.()?.getColor() || '#17324d',
+            __labelStroke:textStyle?.getStroke?.()?.getColor() || '#ffffff',
+            __labelStrokeWidth:textStyle?.getStroke?.()?.getWidth() || 2,
+            __labelFont:textStyle?.getFont?.() || '600 13px "Microsoft YaHei", sans-serif'
+          }
         })
         const ds=await Cesium.GeoJsonDataSource.load(data,{clampToGround:true,stroke:Cesium.Color.RED,fill:Cesium.Color.TRANSPARENT})
         if(!alive() || token!==revision){ds.destroy?.();return}
         ds.entities.values.forEach(entity=>{
-          const fill=entity.properties?.__fill?.getValue(),stroke=entity.properties?.__stroke?.getValue()
+          const fill=entity.properties?.__fill?.getValue(),stroke=entity.properties?.__stroke?.getValue(),label=entity.properties?.__label?.getValue()
           if(entity.polygon){entity.polygon.material=colour(fill,Cesium,Cesium.Color.TRANSPARENT);entity.polygon.outline=false}
           if(entity.polyline){entity.polyline.material=colour(stroke,Cesium,Cesium.Color.RED);entity.polyline.width=entity.properties?.__width?.getValue()||1}
+          // 二维数据中的点主要用于承载地名文字；Cesium 会给所有 GeoJSON 点
+          // 自动补一个蓝色图钉，因此在三维场景统一移除默认 billboard。
+          if(entity.billboard) entity.billboard=undefined
+          if(label){
+            // GeoJsonDataSource 会为点要素自动生成蓝色图钉。名称点只需文字，
+            // 直接移除图形组件可避免图钉和标签叠在一起。
+            entity.point=undefined
+            entity.label={
+              text:String(label),
+              font:entity.properties?.__labelFont?.getValue() || '600 13px "Microsoft YaHei", sans-serif',
+              fillColor:colour(entity.properties?.__labelFill?.getValue(),Cesium,Cesium.Color.fromCssColorString('#17324d')),
+              outlineColor:colour(entity.properties?.__labelStroke?.getValue(),Cesium,Cesium.Color.WHITE),
+              outlineWidth:entity.properties?.__labelStrokeWidth?.getValue() || 2,
+              style:Cesium.LabelStyle.FILL_AND_OUTLINE,
+              verticalOrigin:Cesium.VerticalOrigin.BOTTOM,
+              pixelOffset:new Cesium.Cartesian2(0,-5),
+              disableDepthTestDistance:Number.POSITIVE_INFINITY,
+              distanceDisplayCondition:new Cesium.DistanceDisplayCondition(0,3000000)
+            }
+          }
         })
         // Cesium 不支持贴地面的面描边，用贴地线保留原图层的边界。
         data.features.forEach(feature=>{

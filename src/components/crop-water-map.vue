@@ -1237,22 +1237,38 @@ function dedupeMvtFeatures(features) {
 function normalizeChangeClassesByField(features) {
   if (props.mode !== "change") return features;
   const classByField = new Map();
+  const classByGeometry = new Map();
+  const classPriority = { unchanged: 0, decrease: 1, increase: 2 };
+
+  const keepHigherPriority = (map, key, changeClass) => {
+    if (key === null || key === undefined || !changeColorByClass[changeClass]) return;
+    const current = map.get(key);
+    if (!current || classPriority[changeClass] > classPriority[current]) {
+      map.set(key, changeClass);
+    }
+  };
 
   for (const feature of features) {
     const fieldId = normalizeFeatureId(feature.properties?.field_id ?? feature.properties?.gid ?? feature.id);
-    if (fieldId === null) continue;
     const delta = Number(feature.properties?.delta);
     const inferredClass = Number.isFinite(delta)
       ? (delta > 0 ? "increase" : delta < 0 ? "decrease" : "unchanged")
       : feature.properties?.change_class;
-    if (!classByField.has(fieldId) && changeColorByClass[inferredClass]) {
-      classByField.set(fieldId, inferredClass);
-    }
+    keepHigherPriority(classByField, fieldId, inferredClass);
+    keepHigherPriority(
+      classByGeometry,
+      getMvtGeometryKey(feature.geometryType, feature.coordinates),
+      inferredClass
+    );
   }
 
   return features.map((feature) => {
     const fieldId = normalizeFeatureId(feature.properties?.field_id ?? feature.properties?.gid ?? feature.id);
-    const changeClass = fieldId === null ? null : classByField.get(fieldId);
+    const fieldClass = fieldId === null ? null : classByField.get(fieldId);
+    const geometryClass = classByGeometry.get(getMvtGeometryKey(feature.geometryType, feature.coordinates));
+    const candidates = [feature.properties?.change_class, fieldClass, geometryClass]
+      .filter(changeClass => changeColorByClass[changeClass]);
+    const changeClass = candidates.sort((a, b) => classPriority[b] - classPriority[a])[0];
     if (!changeClass || feature.properties?.change_class === changeClass) return feature;
     return { ...feature, properties: { ...feature.properties, change_class: changeClass } };
   });
@@ -1541,7 +1557,14 @@ function clearMvtPendingRequests() {
 async function renderMvtFieldFeatures(features, zoom, mode) {
   if (!mvtFieldDataSource) return;
 
-  currentMvtCropFeatures = features;
+  // 变化地块按“持平、下降、上升”绘制，让冲突区域最终由红色上升地块覆盖。
+  const renderFeatures = mode === "change"
+    ? [...features].sort((a, b) => {
+        const priority = { unchanged: 0, decrease: 1, increase: 2 };
+        return (priority[a.properties?.change_class] ?? 0) - (priority[b.properties?.change_class] ?? 0);
+      })
+    : features;
+  currentMvtCropFeatures = renderFeatures;
   mvtFieldDataSource.entities.removeAll();
   // 年度监测保持原有点/面策略；时空变化按后端三级瓦片协议显示。
   const overview = mode === "change"
@@ -1551,7 +1574,7 @@ async function renderMvtFieldFeatures(features, zoom, mode) {
   const maxFeatures = mode === "change"
     ? (overview ? 12000 : 5000)
     : (overview ? 4000 : 1600);
-  const step = Math.max(1, Math.ceil(features.length / maxFeatures));
+  const step = Math.max(1, Math.ceil(renderFeatures.length / maxFeatures));
 
   console.info(
     "[crop-water-map] MVT 地块已加载",
@@ -1559,8 +1582,8 @@ async function renderMvtFieldFeatures(features, zoom, mode) {
       crop: cropWaterActiveCrop.value,
       cropCode: cropCodeByKey[cropWaterActiveCrop.value] ?? 1,
       zoom,
-      matched: features.length,
-      rendered: Math.ceil(features.length / step),
+      matched: renderFeatures.length,
+      rendered: Math.ceil(renderFeatures.length / step),
     })
   );
 
@@ -1568,13 +1591,13 @@ async function renderMvtFieldFeatures(features, zoom, mode) {
   const seenOverviewFields = new Set();
   entities.suspendEvents();
   try {
-  for (let index = 0; index < features.length; index += step) {
+  for (let index = 0; index < renderFeatures.length; index += step) {
     if (revision !== mvtRequestSeq || isUnmounted || !viewer) return;
     if (index > 0 && Math.floor(index / step) % 100 === 0) {
       await new Promise(resolve => setTimeout(resolve, 0));
       if (revision !== mvtRequestSeq || isUnmounted || !viewer) return;
     }
-    const feature = features[index];
+    const feature = renderFeatures[index];
     const fieldKey = feature.properties?.field_id ?? feature.id;
     if (overview && fieldKey != null && seenOverviewFields.has(fieldKey)) continue;
     if (overview && fieldKey != null) seenOverviewFields.add(fieldKey);
@@ -1600,7 +1623,7 @@ async function renderMvtFieldFeatures(features, zoom, mode) {
   // 只在用户切换作物时由 focusMvtCropFromOverview 调整视角。
   // 日期、年份或瓦片刷新只替换图层，不改变相机。
 
-  if (cropWaterShowCylinder.value && features.length) {
+  if (cropWaterShowCylinder.value && renderFeatures.length) {
     if (cylinderRefreshTimer) clearTimeout(cylinderRefreshTimer);
     cylinderRefreshTimer = setTimeout(() => {
       cylinderRefreshTimer = null;
@@ -1649,7 +1672,13 @@ function addMvtOverviewEntity(feature, color, index, mode) {
     position: Cesium.Cartesian3.fromDegrees(coordinate[0], coordinate[1], 0),
     point: {
       pixelSize,
-      color: color.withAlpha(mode === "change" ? 0.88 : 0.72),
+      color: color.withAlpha(
+        mode === "change" && feature.properties?.change_class === "increase"
+          ? 1
+          : mode === "change"
+            ? 0.88
+            : 0.72,
+      ),
       outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
       outlineWidth: mode === "change" ? 1.5 : 0.5,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -1674,7 +1703,9 @@ function addMvtPolygonEntities(feature, color, featureIndex, mode) {
       id: `mvt-polygon:${feature.tileKey}:${feature.id}:${featureIndex}:${polygonIndex}`,
       polygon: {
         hierarchy,
-        material: color.withAlpha(0.62),
+        material: color.withAlpha(
+          mode === "change" && feature.properties?.change_class === "increase" ? 1 : 0.62,
+        ),
         outline: true,
         outlineColor: color.brighten(0.32, new Cesium.Color()).withAlpha(0.96),
         outlineWidth: 1.2,
