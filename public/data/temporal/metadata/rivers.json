@@ -1,10 +1,10 @@
 {
   "updated_on": "2026-10-06",
   "layer": {
-    "file": "01_basemap/rivers_major.geojson",
+    "file": "01_basemap/rivers_major_basin.geojson",
     "type": "vector",
     "crs": "EPSG:4326",
-    "features": 4633,
+    "features": 1050,
     "selection_bbox": [
       68,
       40,
@@ -22,7 +22,7 @@
     "source_product": "HydroRIVERS v1.0 Asia",
     "source_documentation": "https://www.hydrosheds.org/products/hydrorivers",
     "river_names_available": false,
-    "name_label_layer": "01_basemap/rivers_named.geojson",
+    "name_label_layer": "01_basemap/rivers_named_basin.geojson",
     "filter": {
       "ORD_STRA": {
         "gte": 5
@@ -36,13 +36,15 @@
       "7": 428,
       "8": 264
     },
-    "total_reach_length_km": 18575.21
+    "total_reach_length_km": 18575.21,
+    "source_file": "data-archive/temporal/01_basemap/rivers_major.geojson",
+    "source_features": 4633
   },
   "display_recommendation": {
     "default": "ORD_STRA >= 5",
     "small_scale_overview": "optionally filter ORD_STRA >= 6 for zoom < 6",
     "line_width": "5: 1.0 px, 6: 1.4 px, 7: 1.8 px, 8: 2.2 px; scale with zoom",
-    "labels": "use rivers_named for labels; HydroRIVERS has no names; do not invent names",
+    "labels": "use hydro_labels.geojson with the basin-clipped Natural Earth name lines; HydroRIVERS has no names",
     "reach_count_is_not_named_river_count": true
   },
   "licensing": "Use HydroSHEDS product licensing terms and cite Lehner & Grill (2013), Hydrological Processes 27(15):2171–2186, doi:10.1002/hyp.9740",

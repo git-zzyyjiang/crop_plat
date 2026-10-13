@@ -3,15 +3,12 @@
     <section ref="panel" class="crop-water-layout float-panel" :style="panelStyle">
       <div class="crop-water-head" @pointerdown="startDrag">
         <div>
-          <div class="panel-title">作物耗水量动态监测</div>
+          <div class="panel-title">年度耗水量动态监测</div>
          
         </div>
-
-        <button class="water-collapse" type="button" :title="collapsed ? '展开面板' : '收起面板'" @pointerdown.stop @click="collapsed = !collapsed">{{ collapsed ? '»' : '«' }}</button>
       </div>
 
-      <div v-show="!collapsed" class="crop-water-body">
-      <p class="water-status" role="status">{{ summaryStatus }} · {{ currentDateText }}</p>
+      <div class="crop-water-body">
       <div class="crop-water-controls">
         <div class="crop-type-list">
           <button
@@ -27,7 +24,7 @@
               :style="{ backgroundColor: item.color }"
             ></span>
             <span class="crop-water-name">
-              <b>{{ item.code }}</b>{{ item.label }}
+              {{ item.label }}
             </span>
           </button>
         </div>
@@ -45,6 +42,23 @@
         </button>
       </div>
 
+      <water-date-timeline
+        :index="Number(dayIndex)"
+        :count="totalDays"
+        :playing="cropWaterIsPlaying"
+        :date="currentDateText"
+        :start="startDateText"
+        :end="endDateText"
+        :years="[2024, 2025, 2026]"
+        :availability-mask="timelineAvailabilityMask"
+        :availability-loading="availabilityLoading"
+        :active-color="activeCropColor"
+        :play-disabled="availabilityLoading || (Boolean(cropWaterActiveCrop) && !availableDayIndices.length)"
+        @select-index="selectTimelineIndex"
+        @select-date="selectTimelineDate"
+        @toggle-play="togglePlayback"
+      />
+
       <div class="crop-water-main">
         <div class="metric-grid">
           <button
@@ -52,7 +66,7 @@
             type="button"
           >
             <span>当日蓝水耗水量</span>
-            <strong>{{ currentData.dailyBlueWater }} <em>m³</em></strong>
+            <strong :title="currentData.dailyBlueWater.exact">{{ currentData.dailyBlueWater.display }} <em>{{ currentData.dailyBlueWater.unit }}</em></strong>
           </button>
 
           <button
@@ -60,7 +74,7 @@
             type="button"
           >
             <span>当日绿水耗水量</span>
-            <strong>{{ currentData.dailyGreenWater }} <em>m³</em></strong>
+            <strong :title="currentData.dailyGreenWater.exact">{{ currentData.dailyGreenWater.display }} <em>{{ currentData.dailyGreenWater.unit }}</em></strong>
           </button>
 
           <button
@@ -70,7 +84,7 @@
             @click="changeMetric('dailyWater')"
           >
             <span>当日总需水量</span>
-            <strong>{{ currentData.dailyWaterDemand }} <em>m³</em></strong>
+            <strong :title="currentData.dailyWaterDemand.exact">{{ currentData.dailyWaterDemand.display }} <em>{{ currentData.dailyWaterDemand.unit }}</em></strong>
           </button>
 
           <button
@@ -79,7 +93,7 @@
             @click="changeMetric('blueWater')"
           >
             <span>累计蓝水耗水量</span>
-            <strong>{{ currentData.cumulativeBlueWater }} <em>m³</em></strong>
+            <strong :title="currentData.cumulativeBlueWater.exact">{{ currentData.cumulativeBlueWater.display }} <em>{{ currentData.cumulativeBlueWater.unit }}</em></strong>
           </button>
 
           <button
@@ -89,7 +103,7 @@
             @click="changeMetric('greenWater')"
           >
             <span>累计绿水耗水量</span>
-            <strong>{{ currentData.cumulativeGreenWater }} <em>m³</em></strong>
+            <strong :title="currentData.cumulativeGreenWater.exact">{{ currentData.cumulativeGreenWater.display }} <em>{{ currentData.cumulativeGreenWater.unit }}</em></strong>
           </button>
 
           <button
@@ -99,20 +113,20 @@
             @click="changeMetric('waterFootprint')"
           >
             <span>累计总需水量</span>
-            <strong>{{ currentData.cumulativeWaterDemand }} <em>m³</em></strong>
+            <strong :title="currentData.cumulativeWaterDemand.exact">{{ currentData.cumulativeWaterDemand.display }} <em>{{ currentData.cumulativeWaterDemand.unit }}</em></strong>
           </button>
         </div>
 
         <div class="chart-card">
           <div class="chart-title-row">
-            <div class="chart-title">作物耗水动态过程</div>
+            <div class="chart-title">年度耗水动态过程</div>
             <div class="chart-legend">
               <span class="legend-bar">当日需水量</span>
               <span class="legend-line">累计需水量</span>
             </div>
           </div>
 
-          <p v-if="!chartSeries.length" class="chart-demo-label">{{ trendLoading ? '正在读取趋势数据…' : '演示曲线 · 暂无服务器趋势数据' }}</p>
+          <p v-if="!activeChartSeries.length" class="chart-demo-label">{{ trendLoading ? '正在读取趋势数据…' : '暂无服务器趋势数据' }}</p>
           <svg class="trend-chart" viewBox="0 0 520 150" preserveAspectRatio="none">
             <defs>
               <linearGradient id="stageGradient" x1="0" x2="1" y1="0" y2="0">
@@ -219,10 +233,8 @@
           </div>
         </div>
       </div>
-      <p v-if="cropWaterShowCylinder" class="water-allocation-note">水柱按可见地块面积分配作物汇总耗水量。</p>
       </div>
     </section>
-    <water-date-timeline :index="Number(dayIndex)" :count="totalDays" :playing="cropWaterIsPlaying" :date="currentDateText" :start="startDateText" :end="endDateText" @select-index="selectTimelineIndex" @select-date="selectTimelineDate" @toggle-play="togglePlayback"/>
   </div>
 </template>
 
@@ -232,11 +244,18 @@ import { storeToRefs } from "pinia";
 import useMapStore from "@/stores/map";
 import WaterDateTimeline from "@/components/part/water-date-timeline.vue";
 import { usePanelDrag } from "@/composables/usePanelDrag";
+import { getCropColor } from "@/utils/crop-colors";
+import {
+  getWaterTimelineDate,
+  getWaterTimelineIndex,
+  waterTimelineDates,
+  waterTimelineEndDate,
+  waterTimelineStartDate,
+  getWaterSeasonYear,
+} from "@/utils/water-timeline";
 
 const store = useMapStore();
 const { panel, panelStyle, startDrag } = usePanelDrag();
-const collapsed = ref(false);
-const summaryStatus = ref("正在读取耗水数据…");
 const trendLoading = ref(false);
 let disposed = false;
 const waterApiBase =
@@ -255,26 +274,24 @@ const {
 
 store.isShowFeautureInfo = false;
 
-const cropDateRanges = {
-  default: { start: "2026-01-01", end: "2026-09-27" },
-};
-const activeCropDateRange = computed(
-  () => cropDateRanges.default
-);
-const startDate = computed(() => new Date(activeCropDateRange.value.start));
-const endDate = computed(() => new Date(activeCropDateRange.value.end));
-const startDateText = computed(() => formatDate(startDate.value));
-const endDateText = computed(() => formatDate(endDate.value));
+const startDate = computed(() => new Date(`${waterTimelineStartDate}T00:00:00`));
+const endDate = computed(() => new Date(`${waterTimelineEndDate}T00:00:00`));
+const startDateText = computed(() => waterTimelineStartDate);
+const endDateText = computed(() => waterTimelineEndDate);
 const dayIndex = ref(0);
+const availabilityDates = ref(null);
+const availabilityLoading = ref(false);
 const chartSeries = ref([]);
 const hoveredChartIndex = ref(null);
 const isThumbDragging = ref(false);
 let chartRequestSeq = 0;
 let summaryRequestSeq = 0;
+let availabilityRequestSeq = 0;
 let playbackTimer = null;
 let thumbDragState = null;
 const summaryCache = new Map();
 const summaryPendingCache = new Map();
+const availabilityCache = new Map();
 
 const chartWidth = 520;
 
@@ -283,24 +300,39 @@ const chartBottom = 132;
 const barTop = 58;
 
 const cropTypes = [
-  { code: 1, name: "winterWheat", label: "冬小麦", color: "#5ee34b", factor: 0.86 },
-  { code: 2, name: "springWheat", label: "春小麦", color: "#a4db52", factor: 0.9 },
-  { code: 3, name: "cotton", label: "棉花", color: "#c08be8", factor: 1.02 },
-  { code: 4, name: "corn", label: "玉米", color: "#f8d34a", factor: 1.18 },
-  { code: 5, name: "rice", label: "水稻", color: "#38c7cf", factor: 1.15 },
-  { code: 8, name: "winterWheatCorn", label: "冬小麦—玉米轮作", color: "#f28c45", factor: 1 },
-  { code: 9, name: "winterWheatRice", label: "冬小麦—水稻轮作", color: "#4fa0ec", factor: 1 },
+  { code: 1, name: "winterWheat", label: "冬小麦", color: getCropColor(1), factor: 0.86 },
+  { code: 2, name: "springWheat", label: "春小麦", color: getCropColor(2), factor: 0.9 },
+  { code: 3, name: "cotton", label: "棉花", color: getCropColor(3), factor: 1.02 },
+  { code: 4, name: "corn", label: "玉米", color: getCropColor(4), factor: 1.18 },
+  { code: 5, name: "rice", label: "水稻", color: getCropColor(5), factor: 1.15 },
+  { code: 8, name: "winterWheatCorn", label: "冬小麦—玉米轮作", color: getCropColor(8), factor: 1 },
+  { code: 9, name: "winterWheatRice", label: "冬小麦—水稻轮作", color: getCropColor(9), factor: 1 },
 ];
 
 const totalDays = computed(() => {
-  const diff = endDate.value.getTime() - startDate.value.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  return waterTimelineDates.length;
+});
+
+const activeCropMeta = computed(() =>
+  cropTypes.find((item) => item.name === cropWaterActiveCrop.value) || null
+);
+const activeCropColor = computed(() => activeCropMeta.value?.color || "#398ff1");
+const timelineAvailabilityMask = computed(() => {
+  if (!cropWaterActiveCrop.value) return null;
+  const dates = availabilityDates.value || new Set();
+  return waterTimelineDates.map((date) => dates.has(date));
+});
+const availableDayIndices = computed(() => {
+  const mask = timelineAvailabilityMask.value;
+  if (!Array.isArray(mask)) return [];
+  return mask.reduce((indices, available, index) => {
+    if (available) indices.push(index);
+    return indices;
+  }, []);
 });
 
 const currentDate = computed(() => {
-  const date = new Date(startDate.value);
-  date.setDate(startDate.value.getDate() + Number(dayIndex.value));
-  return date;
+  return new Date(`${getWaterTimelineDate(dayIndex.value)}T00:00:00`);
 });
 
 const currentDateText = computed(() => {
@@ -323,7 +355,7 @@ watch(
 );
 
 watch(
-  () => [cropWaterActiveCrop.value, cropWaterActiveDate.value],
+  () => cropWaterActiveCrop.value,
   () => {
     loadTrendSeries();
   },
@@ -343,11 +375,10 @@ watch(
 
 watch(
   () => cropWaterActiveCrop.value,
-  () => {
-    const nextIndex = getDayIndexFromDate(cropWaterActiveDate.value);
-    dayIndex.value = Number.isFinite(nextIndex) ? nextIndex : 0;
-    cropWaterActiveDate.value = currentDateText.value;
-  }
+  (crop) => {
+    loadCropAvailability(crop);
+  },
+  { immediate: true }
 );
 
 watch(
@@ -363,8 +394,8 @@ watch(
 
 onMounted(() => {
   if (!cropTypes.some((item) => item.name === cropWaterActiveCrop.value)) {
-    cropWaterActiveCrop.value = cropTypes[0].name;
-    cropWaterViewportCrop.value = cropTypes[0].name;
+    cropWaterActiveCrop.value = null;
+    cropWaterViewportCrop.value = null;
   }
   dayIndex.value = getDayIndexFromDate(cropWaterActiveDate.value) ?? 0;
   changeDate();
@@ -378,6 +409,7 @@ onBeforeUnmount(() => {
   stopThumbDrag();
   chartRequestSeq++;
   summaryRequestSeq++;
+  availabilityRequestSeq++;
   disposed = true;
 });
 
@@ -386,8 +418,6 @@ function changeCrop(crop) {
   stopPlaybackTimer();
   cropWaterActiveCrop.value = crop;
   cropWaterViewportCrop.value = crop;
-  dayIndex.value = 0;
-  cropWaterActiveDate.value = currentDateText.value;
 }
 
 function changeMetric(metric) {
@@ -395,7 +425,10 @@ function changeMetric(metric) {
 }
 
 function selectTimelineIndex(index) {
-  dayIndex.value = Math.max(0, Math.min(totalDays.value - 1, index));
+  const boundedIndex = Math.max(0, Math.min(totalDays.value - 1, index));
+  dayIndex.value = cropWaterActiveCrop.value && availableDayIndices.value.length
+    ? getNearestAvailableIndex(boundedIndex)
+    : boundedIndex;
   changeDate();
 }
 function selectTimelineDate(date) {
@@ -425,6 +458,7 @@ function toggleViewportLock() {
 }
 
 function togglePlayback() {
+  if (cropWaterActiveCrop.value && !availableDayIndices.value.length) return;
   cropWaterIsPlaying.value = !cropWaterIsPlaying.value;
 
   if (cropWaterIsPlaying.value) {
@@ -483,8 +517,7 @@ function startPlaybackTimer() {
   stopPlaybackTimer();
 
   playbackTimer = setInterval(() => {
-    const nextIndex = Number(dayIndex.value) + 1;
-    dayIndex.value = nextIndex >= totalDays.value ? 0 : nextIndex;
+    dayIndex.value = getNextPlaybackIndex(Number(dayIndex.value));
     changeDate();
   }, 2800);
 }
@@ -497,26 +530,99 @@ function stopPlaybackTimer() {
 }
 
 function getDayIndexFromDate(date) {
-  const time = new Date(date).getTime();
+  return getWaterTimelineIndex(date);
+}
 
-  if (!Number.isFinite(time)) {
-    return null;
+function getNearestAvailableIndex(index) {
+  const indices = availableDayIndices.value;
+  if (!indices.length) return index;
+  if (timelineAvailabilityMask.value?.[index]) return index;
+
+  let nearest = indices[0];
+  let nearestDistance = Math.abs(nearest - index);
+  for (let position = 1; position < indices.length; position += 1) {
+    const candidate = indices[position];
+    const distance = Math.abs(candidate - index);
+    if (distance >= nearestDistance) break;
+    nearest = candidate;
+    nearestDistance = distance;
+  }
+  return nearest;
+}
+
+function getNextPlaybackIndex(index) {
+  const indices = availableDayIndices.value;
+  if (!cropWaterActiveCrop.value || !indices.length) {
+    const nextIndex = index + 1;
+    return nextIndex >= totalDays.value ? 0 : nextIndex;
   }
 
-  return Math.min(
-    Math.max(
-      Math.round((time - startDate.value.getTime()) / (1000 * 60 * 60 * 24)),
-      0
-    ),
-    totalDays.value - 1
-  );
+  return indices.find((candidate) => candidate > index) ?? indices[0];
+}
+
+async function loadCropAvailability(crop) {
+  const requestSeq = ++availabilityRequestSeq;
+  cropWaterIsPlaying.value = false;
+  stopPlaybackTimer();
+
+  if (!crop) {
+    availabilityDates.value = null;
+    availabilityLoading.value = false;
+    return;
+  }
+
+  const cropCode = getSummaryApiCrop(crop);
+  if (availabilityCache.has(cropCode)) {
+    applyCropAvailability(availabilityCache.get(cropCode));
+    return;
+  }
+
+  availabilityDates.value = new Set();
+  availabilityLoading.value = true;
+  const url = `${waterApiBase}/api/water/availability?crop_code=${encodeURIComponent(cropCode)}`;
+
+  try {
+    const response = await fetch(url);
+    const result = await readApiResponseBody(response);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const row = result?.data?.data ?? result?.data ?? result;
+    const dates = Array.isArray(row?.dates)
+      ? [...new Set(row.dates.filter((date) => typeof date === "string"))].sort()
+      : [];
+    availabilityCache.set(cropCode, dates);
+
+    if (disposed || requestSeq !== availabilityRequestSeq || crop !== cropWaterActiveCrop.value) return;
+    applyCropAvailability(dates);
+  } catch (error) {
+    if (disposed || requestSeq !== availabilityRequestSeq || crop !== cropWaterActiveCrop.value) return;
+    availabilityDates.value = new Set();
+    console.warn("Crop water availability API request failed.", { crop, cropCode, url, error });
+  } finally {
+    if (!disposed && requestSeq === availabilityRequestSeq) {
+      availabilityLoading.value = false;
+    }
+  }
+}
+
+function applyCropAvailability(dates) {
+  availabilityDates.value = new Set(dates);
+  availabilityLoading.value = false;
+
+  const currentIndex = getDayIndexFromDate(cropWaterActiveDate.value) ?? 0;
+  const nextIndex = getNearestAvailableIndex(currentIndex);
+  if (availableDayIndices.value.length && nextIndex !== dayIndex.value) {
+    dayIndex.value = nextIndex;
+    changeDate();
+  }
 }
 
 async function loadSummaryData() {
   const requestSeq = ++summaryRequestSeq;
   const crop = cropWaterActiveCrop.value;
   const date = cropWaterActiveDate.value;
-  summaryStatus.value = "正在读取耗水数据…";
   const summary = await loadSummaryByDate(crop, date, {
     log: true,
   });
@@ -530,7 +636,6 @@ async function loadSummaryData() {
   }
 
   cropWaterSummaryData.value = summary;
-  summaryStatus.value = summary ? "耗水数据已接入" : "当前日期暂无耗水数据";
   console.info("[crop-water] summary data applied", {
     crop,
     apiCrop: getSummaryApiCrop(crop),
@@ -542,13 +647,15 @@ async function loadTrendSeries() {
   const requestSeq = ++chartRequestSeq;
   trendLoading.value = true;
   const crop = cropWaterActiveCrop.value;
-  const dates = buildDateList(7);
-  const rows = await Promise.all(
-    dates.map(async (date) => ({
+  const dates = buildDateList(14);
+  const rows = [];
+  for (let offset = 0; offset < dates.length; offset += 8) {
+    rows.push(...await Promise.all(dates.slice(offset, offset + 8).map(async (date) => ({
       date,
       summary: await loadSummaryByDate(crop, date),
-    }))
-  );
+    }))));
+    if (disposed || requestSeq !== chartRequestSeq) return;
+  }
 
   if (disposed || requestSeq !== chartRequestSeq) return;
   trendLoading.value = false;
@@ -613,7 +720,6 @@ async function loadSummaryByDate(crop, date, options = {}) {
       }
 
       if (!response.ok) {
-        summaryCache.set(cacheKey, null);
         return null;
       }
 
@@ -631,7 +737,6 @@ async function loadSummaryByDate(crop, date, options = {}) {
       if (options.log) {
         console.warn("Crop daily summary water API request failed.", error);
       }
-      summaryCache.set(cacheKey, null);
       return null;
     })
     .finally(() => {
@@ -836,9 +941,40 @@ function amplifyMixRatio(ratio) {
 
 
 function formatMetricValue(value) {
-  if (value === undefined || value === null || value === "") return "--";
+  if (value === undefined || value === null || value === "") {
+    return { display: "--", unit: "m³", exact: "暂无数据" };
+  }
   const number = Number(value);
-  return Number.isFinite(number) ? number.toFixed(2) : "--";
+  if (!Number.isFinite(number)) return { display: "--", unit: "m³", exact: "暂无数据" };
+
+  const exact = `${number.toLocaleString("zh-CN", { maximumFractionDigits: 2 })} m³`;
+  if (Math.abs(number) >= 100000000) {
+    const scaled = number / 100000000;
+    return {
+      display: scaled.toLocaleString("zh-CN", {
+        minimumFractionDigits: scaled < 100 ? 2 : 1,
+        maximumFractionDigits: 2,
+      }),
+      unit: "亿 m³",
+      exact,
+    };
+  }
+  if (Math.abs(number) >= 10000) {
+    const scaled = number / 10000;
+    return {
+      display: scaled.toLocaleString("zh-CN", {
+        minimumFractionDigits: scaled < 100 ? 2 : 1,
+        maximumFractionDigits: 2,
+      }),
+      unit: "万 m³",
+      exact,
+    };
+  }
+  return {
+    display: number.toLocaleString("zh-CN", { maximumFractionDigits: 0 }),
+    unit: "m³",
+    exact,
+  };
 }
 
 function getFiniteSummaryValue(summary, key) {
@@ -891,9 +1027,7 @@ function formatSummaryMetric(summary, key) {
   };
 } */
 
-const activeChartSeries = computed(() =>
-  chartSeries.value.length ? chartSeries.value : buildMockChartSeries(buildDateList())
-);
+const activeChartSeries = computed(() => chartSeries.value);
 
 const dailyMax = computed(() =>
   Math.max(...activeChartSeries.value.map((item) => item.dailyEta), 1)
@@ -909,7 +1043,7 @@ const dailyBars = computed(() => {
   const barWidth = Math.max(slotWidth * 0.62, 1);
 
   return values.map((item, index) => {
-    const height = (item.dailyEta / dailyMax.value) * (chartBottom - barTop);
+    const height = getLogScaleRatio(item.dailyEta, dailyMax.value) * (chartBottom - barTop);
 
     return {
       date: item.date,
@@ -926,9 +1060,17 @@ const cumulativePoints = computed(() =>
     x: getChartX(index),
     y:
       chartTop +
-      (1 - item.cumulativeEta / cumulativeMax.value) * (chartBottom - chartTop),
+      (1 - getLogScaleRatio(item.cumulativeEta, cumulativeMax.value)) *
+        (chartBottom - chartTop),
   }))
 );
+
+function getLogScaleRatio(value, maxValue) {
+  const safeValue = Math.max(Number(value) || 0, 0);
+  const safeMax = Math.max(Number(maxValue) || 0, 1);
+
+  return Math.log1p(safeValue) / Math.log1p(safeMax);
+}
 
 const cumulativePath = computed(() => buildSmoothPath(cumulativePoints.value));
 
@@ -1055,42 +1197,43 @@ function buildSmoothPath(points) {
 </script>
 
 <style scoped>
-.crop-water-bottom { position: static; color: var(--ink-900); pointer-events: none; }
-.crop-water-layout { position: fixed; top: calc(var(--header-h) + var(--tabs-h) + 11px); left: 11px; z-index: 1000; width: min(390px, calc(100vw - 90px)); box-sizing: border-box; pointer-events: auto; }
-.crop-water-head { display: flex; align-items: center; justify-content: space-between; height: 45px; padding: 0 15px; border-bottom: 1px solid #e6edf5; cursor: move; touch-action: none; user-select: none; }
-.panel-title { color: var(--ink-700); font-size: 16px; font-weight: 600; }
-.water-collapse { padding: 0 4px; color: var(--ink-300); font-size: 20px; background: none; border: 0; cursor: pointer; }
-.crop-water-body { max-height: calc(100vh - var(--header-h) - var(--tabs-h) - 190px); padding: 12px 15px 15px; overflow-y: auto; scrollbar-width: thin; }
-.water-status { margin: 0 0 12px; color: var(--ink-300); font-size: 11px; }
-.crop-water-controls { display: flex; flex-wrap: wrap; gap: 8px; }
-.crop-type-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; margin-bottom: 4px; }
-.legend-item { display: flex; align-items: center; min-width: 0; padding: 8px; border: 1px solid #e1eaf6; border-radius: 6px; background: #f6f9fe; color: var(--ink-900); font: inherit; cursor: pointer; }
-.legend-item.clicked { border-color: var(--brand-400); background: #eaf4ff; }
-.crop-water-color { flex: 0 0 auto; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; }
-.crop-water-name { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-900); font-size: 12px; line-height: 1.4; }
-.crop-water-name b { font-size: 10px; color: var(--ink-300); }
-.legend-item.clicked .crop-water-name { color: var(--brand-500); font-weight: 600; }
-.toggle-button { flex: 1; min-height: 32px; border: 1px solid #cfe0f5; border-radius: 6px; background: #eef5ff; color: var(--ink-500); font: inherit; font-size: 12px; cursor: pointer; }
+.crop-water-bottom { position: fixed; right: 0; bottom: 0; left: 0; z-index: 1100; height: 33.333vh; color: #eaf6ff; pointer-events: none; }
+.crop-water-layout { position: absolute; inset: 0; width: auto; height: 100%; box-sizing: border-box; overflow: hidden; pointer-events: auto; background: linear-gradient(145deg, rgba(11, 39, 54, .985), rgba(6, 24, 37, .99)); border: 0; border-top: 2px solid rgba(85, 190, 235, .42); border-radius: 0; box-shadow: 0 -14px 38px rgba(2, 15, 26, .38), inset 0 1px 0 rgba(255, 255, 255, .06); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.crop-water-head { display: flex; align-items: center; justify-content: space-between; height: 34px; padding: 0 16px; border-bottom: 1px solid rgba(133, 205, 235, .12); cursor: move; touch-action: none; user-select: none; }
+.panel-title { position: relative; padding-left: 10px; color: #f1faff; font-size: 14px; font-weight: 650; letter-spacing: .02em; }
+.panel-title::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 0; width: 3px; border-radius: 2px; background: linear-gradient(#63d4ff, #1688ef); box-shadow: 0 0 8px rgba(61, 187, 255, .48); }
+.crop-water-body { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 7px; height: calc(100% - 34px); padding: 7px 16px 9px; box-sizing: border-box; overflow: hidden; scrollbar-width: thin; }
+.crop-water-controls { display: grid; grid-template-columns: minmax(0, 1fr) 105px 105px; align-items: center; gap: 7px; }
+.crop-type-list { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 0; }
+.legend-item { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 29px; padding: 4px 6px; border: 1px solid rgba(161, 211, 235, .16); border-radius: 6px; background: linear-gradient(180deg, rgba(202, 227, 245, .09), rgba(202, 227, 245, .04)); color: #eaf6ff; font: inherit; cursor: pointer; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.legend-item:hover { transform: translateY(-1px); border-color: rgba(95, 199, 242, .45); }
+.legend-item.clicked { border-color: #56b7ee; background: linear-gradient(180deg, rgba(51, 153, 214, .3), rgba(34, 104, 157, .2)); box-shadow: inset 0 0 12px rgba(86, 183, 238, .1), 0 0 10px rgba(31, 145, 222, .1); }
+.crop-water-color { flex: 0 0 auto; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; }
+.crop-water-name { display: inline-flex; align-items: center; min-width: 0; gap: 3px; overflow: hidden; color: #dcecf6; font-size: 10px; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
+.crop-water-name b { font-size: 10px; color: #9db8c8; }
+.legend-item.clicked .crop-water-name { color: #8bd5ff; font-weight: 600; }
+.toggle-button { flex: 1; min-height: 29px; border: 1px solid rgba(161, 211, 235, .2); border-radius: 6px; background: linear-gradient(180deg, rgba(202, 227, 245, .12), rgba(202, 227, 245, .06)); color: #dcecf6; font: inherit; font-size: 10px; cursor: pointer; }
 .toggle-button.active { color: #fff; border-color: var(--brand-500); background: linear-gradient(#2c93ff, #156ee4); }
-.crop-water-main { margin-top: 14px; }
-.metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-.metric-card { min-width: 0; padding: 10px 9px; text-align: left; background: #f5f8fd; border: 1px solid #e3ebf5; border-radius: 6px; font: inherit; color: var(--ink-900); cursor: pointer; }
-.metric-card.active { background: var(--metric-accent-soft, #eaf4ff); border-color: var(--metric-accent, var(--brand-400)); }
+.crop-water-main { display: grid; grid-template-columns: minmax(350px, .78fr) minmax(430px, 1.22fr); gap: 12px; min-height: 0; margin-top: 0; }
+.metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); min-height: 0; gap: 7px; }
+.metric-card { position: relative; display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 0; padding: 4px 9px; text-align: left; background: linear-gradient(145deg, rgba(28, 73, 94, .38), rgba(13, 48, 65, .3)); border: 1px solid rgba(137, 207, 235, .17); border-radius: 7px; box-shadow: inset 0 1px 0 rgba(255,255,255,.035); font: inherit; color: #eaf6ff; cursor: pointer; overflow: hidden; }
+.metric-card::after { content: ''; position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: var(--metric-accent, #56b7ee); opacity: .34; }
+.metric-card.active { background: linear-gradient(145deg, rgba(43, 122, 162, .38), rgba(23, 71, 100, .36)); border-color: var(--metric-accent, #56b7ee); box-shadow: 0 0 14px rgba(50, 165, 225, .1), inset 0 1px 0 rgba(255,255,255,.06); }
 .metric-card-static { cursor: default; }
-.metric-card span { display: block; color: #708198; font-size: 11px; }
-.metric-card strong { display: block; margin-top: 5px; color: var(--metric-accent, var(--ink-500)); font-size: 16px; overflow-wrap: anywhere; }
-.metric-card em { color: var(--ink-300); font-size: 10px; font-style: normal; font-weight: 400; }
-.chart-card { position: relative; margin-top: 14px; padding-top: 12px; border-top: 1px solid #e6edf5; }
+.metric-card span { display: block; overflow: hidden; color: #9bb6c7; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+.metric-card strong { display: block; margin-top: 2px; color: var(--metric-accent, #80d0ff); font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
+.metric-card em { color: #8faabb; font-size: 8px; font-style: normal; font-weight: 400; }
+.chart-card { position: relative; min-height: 0; margin: 0; padding: 8px 11px 4px; border: 1px solid rgba(137, 207, 235, .16); border-radius: 8px; background: linear-gradient(145deg, rgba(17, 58, 76, .34), rgba(8, 37, 52, .28)); box-shadow: inset 0 1px 0 rgba(255,255,255,.025); }
 .chart-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px; }
-.chart-title { font-size: 13px; font-weight: 600; color: var(--ink-700); }
-.chart-legend { display: flex; gap: 10px; color: var(--ink-300); font-size: 10px; }
+.chart-title { font-size: 13px; font-weight: 600; color: #eaf6ff; }
+.chart-legend { display: flex; gap: 10px; color: #9db8c8; font-size: 10px; }
 .chart-legend span::before { content: ''; display: inline-block; width: 8px; height: 6px; margin-right: 4px; border-radius: 1px; background: #46acfa; }
 .chart-legend .legend-line::before { height: 2px; background: #2db284; vertical-align: middle; }
 .chart-demo-label { margin: 8px 0 0; color: var(--ink-300); font-size: 10px; }
-.trend-chart { display: block; width: 100%; height: 150px; margin-top: 10px; overflow: visible; }
+.trend-chart { display: block; width: 100%; height: calc(100% - 34px); min-height: 55px; margin-top: 2px; overflow: visible; }
 .stage-band { fill: rgba(56, 189, 248, .05); }
 .stage-band:nth-of-type(2) { fill: rgba(34, 197, 94, .05); }
-.chart-axis { stroke: #cfe0f5; stroke-width: 1; }
+.chart-axis { stroke: rgba(161, 211, 235, .35); stroke-width: 1; }
 .daily-bar { fill: url(#etaBarGradient); }
 .cumulative-line { fill: none; stroke: #2db284; stroke-width: 2.5; }
 .current-line { stroke: #156ee4; stroke-width: 1; stroke-dasharray: 4 4; }
@@ -1099,12 +1242,25 @@ function buildSmoothPath(points) {
 .hover-marker line { stroke: #7890aa; stroke-dasharray: 3 3; }
 .hover-marker circle { fill: #fff; stroke: #2db284; stroke-width: 2; }
 .chart-hit-area { fill: transparent; cursor: crosshair; }
-.chart-footer { display: flex; justify-content: space-between; margin-top: 5px; color: var(--ink-300); font-size: 10px; line-height: 1.5; }
+.chart-footer { display: flex; justify-content: space-between; margin-top: 1px; color: #819cab; font-size: 8px; line-height: 1.2; }
 .chart-footer span:last-child { text-align: right; }
 .chart-tooltip { position: absolute; bottom: 48px; transform: translateX(-50%); max-width: 95%; padding: 9px 11px; background: var(--panel-bg); border: 1px solid #d8e5f5; border-radius: 6px; box-shadow: var(--panel-shadow); color: var(--ink-900); font-size: 11px; white-space: nowrap; pointer-events: none; }
 .chart-tooltip b, .chart-tooltip span { display: block; }
 .chart-tooltip b { color: var(--ink-700); margin-bottom: 4px; }
-.water-allocation-note { margin: 12px 0 0; font-size: 11px; line-height: 1.6; color: var(--ink-300); }
+:deep(.dt-panel) { position: static; left: auto; bottom: auto; transform: none; z-index: auto; width: 100%; padding: 2px 0 1px; box-sizing: border-box; background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 10px; }
+:deep(.dt-bar) { height: 14px; gap: 6px; cursor: default; }
+:deep(.dt-grip) { display: none; }
+:deep(.dt-title) { font-size: 10px; color: #9db8c8; }
+:deep(.dt-status) { font-size: 9px; }
+:deep(.dt-body) { gap: 8px; margin-top: 2px; }
+:deep(.dt-play) { width: 22px; height: 22px; }
+:deep(.dt-play img) { width: 12px; height: 12px; }
+:deep(.dt-range) { height: 3px; }
+:deep(.dt-range::-webkit-slider-thumb) { width: 12px; height: 12px; }
+:deep(.dt-date) { width: 108px; height: 22px; padding: 2px 6px; border-radius: 5px; font-size: 10px; }
+:deep(.dt-ticks) { height: 10px; margin: 2px 116px 0 30px; }
+:deep(.dt-ticks button), :deep(.dt-ticks span) { font-size: 9px; }
 button:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 2px; }
-@media (max-width: 520px) { .crop-water-layout { width: calc(100vw - 78px); } .metric-card strong { font-size: 14px; } }
+@media (max-width: 900px) { .crop-water-body { overflow: hidden; } .crop-water-controls { grid-template-columns: minmax(0, 1fr) 82px 82px; } .crop-type-list { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; } .legend-item { padding-inline: 3px; } .crop-water-name { font-size: 8px; } .crop-water-name b { display: none; } .crop-water-main { grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr); gap: 7px; } .metric-card { padding: 3px 5px; } .metric-card strong { margin-top: 1px; font-size: 11px; } .chart-card { padding-left: 7px; } }
+@media (max-width: 600px) { .crop-water-bottom { height: 33.333vh; } .crop-water-body { padding-inline: 8px; } .crop-water-controls { grid-template-columns: minmax(0, 1fr) 68px 68px; } .crop-type-list { overflow-x: auto; grid-template-columns: repeat(7, minmax(66px, 1fr)); } .crop-water-main { grid-template-columns: 1fr; } .chart-card { display: none; } .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 </style>

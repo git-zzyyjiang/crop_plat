@@ -18,12 +18,18 @@
       <text x="24" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">N</text>
     </svg>
 
-    <div v-if="showMapTools && is2D && roiActive" class="roi-mode-switch" @pointerdown.stop @click.stop @dblclick.stop>
+    <div v-if="showMapTools && (is2D || store.parcelIdentifyEnabled) && roiActive" class="roi-mode-switch" @pointerdown.stop @click.stop @dblclick.stop>
       <div class="roi-mode-buttons" role="group" aria-label="框选操作模式">
         <button type="button" :aria-pressed="parcelRoiMode === 'draw'" @click="store.setParcelRoiMode('draw')">画框</button>
         <button type="button" :aria-pressed="parcelRoiMode === 'pan'" @click="store.setParcelRoiMode('pan')">拖动地图</button>
+        <button
+          v-if="parcelRoiState === 'applied'"
+          type="button"
+          class="roi-cancel"
+          @click="cancelParcelRoi"
+        >取消框选</button>
       </div>
-      <p aria-live="polite">{{ parcelRoiMode === 'pan' ? '拖动地图查看其他位置，已有选框保留' : '拖动画框，按住选框边缘可移动选区' }}</p>
+      <p aria-live="polite">{{ roiHint }}</p>
     </div>
 
     <!-- 右侧工具条：2D/3D、缩放、全屏、框选 -->
@@ -79,10 +85,11 @@ const scene3d = ref(null)
 const switching = ref(false)
 const sceneError = ref('')
 let switchRevision = 0
+watch(is3D, () => store.syncRiverAnimationWith3D())
 const resetScene = () => { switchRevision++; is3D.value = false; switching.value = false }
 watch(() => route.name, () => { resetScene(); sceneError.value = '' })
-// 框选依赖二维地图交互，开始框选时自动回到二维。
-watch(parcelRoiState, state => { if (state === 'drawing' && is3D.value) resetScene() })
+// 农业地块支持在三维地形上框选，其他专题仍使用二维框选。
+watch(parcelRoiState, state => { if (state === 'drawing' && is3D.value && !store.parcelIdentifyEnabled) resetScene() })
 const handle3DFailure = message => {
   is3D.value = false
   switching.value = false
@@ -115,6 +122,18 @@ const toggleFullscreen = () => {
 const MAP_TOOL_ROUTES = ['agriParcel', 'cropClassification']
 const showMapTools = computed(() => MAP_TOOL_ROUTES.includes(route.name))
 const roiActive = computed(() => parcelRoiState.value !== 'idle')
+const roiHint = computed(() => {
+  if (parcelRoiMode.value === 'pan') {
+    return parcelRoiState.value === 'applied' ? '拖动地图查看其他位置，已有选框保留' : '拖动地图查看区域，需要识别时点击“画框”'
+  }
+  return '拖动画框，按住选框边缘可移动选区'
+})
+
+const cancelParcelRoi = () => {
+  store.clearParcelRoi()
+  store.startParcelRoiDraw()
+  store.setParcelRoiMode('pan')
+}
 
 // 处理滚轮事件，停止播放动画
 const handleScroll = function (){
@@ -135,7 +154,7 @@ const toggle2D3D = async () => {
   const revision = ++switchRevision
   switching.value = true
   if (is2D.value) {
-    store.clearParcelRoi(false)
+    if (!store.parcelIdentifyEnabled) store.clearParcelRoi(false)
     store.stopParcelTimelinePlay()
     is3D.value = true
   } else {
@@ -291,7 +310,7 @@ onBeforeUnmount(() => {
   right: 78px;
   z-index: 1210;
   padding: 6px 8px 8px;
-  width: 308px;
+  width: 330px;
   box-sizing: border-box;
   border: 1px solid rgba(218, 238, 255, .28);
   border-radius: 12px;
@@ -304,9 +323,11 @@ onBeforeUnmount(() => {
 .roi-mode-buttons button { flex: 1; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #d5e8f6; font-size: 13px; cursor: pointer; }
 .roi-mode-buttons button:hover { background: rgba(180, 223, 255, .12); }
 .roi-mode-buttons button[aria-pressed="true"] { background: #258df0; color: #fff; box-shadow: 0 2px 8px rgba(10, 105, 200, .24); }
+.roi-mode-buttons .roi-cancel { color: #ffd8d8; }
+.roi-mode-buttons .roi-cancel:hover { background: rgba(222, 72, 72, .24); color: #fff; }
 .roi-mode-buttons button:focus-visible { outline: 2px solid #91d9ff; outline-offset: 2px; }
 .roi-mode-switch p { margin: 7px 0 0; text-align: center; font-size: 11px; line-height: 1.5; }
-@media (max-width: 640px) { .roi-mode-switch { width: min(308px, calc(100vw - 100px)); } }
+@media (max-width: 640px) { .roi-mode-switch { width: min(330px, calc(100vw - 100px)); } }
 .scene-error {
   position: absolute;
   z-index: 1001;

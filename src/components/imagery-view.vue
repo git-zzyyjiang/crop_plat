@@ -5,9 +5,10 @@
 
     <!-- 鼠标悬停在已加载图层上时的取值提示 -->
     <div v-if="temporalHoverInfo" class="ts-map-tooltip float-panel" :style="hoverTooltipStyle">
-      <small>{{ temporalHoverInfo.coordinateLabel }}</small>
+      <small v-if="temporalHoverInfo.coordinateLabel">{{ temporalHoverInfo.coordinateLabel }}</small>
       <span v-for="item in temporalHoverInfo.items" :key="item.id">
-        <b>{{ item.label }}</b>{{ item.value }}
+        <template v-if="item.id === 'rivers'">{{ item.value }}</template>
+        <template v-else><b>{{ item.label }}</b>{{ item.value }}</template>
       </span>
     </div>
   </div>
@@ -31,8 +32,8 @@ const hoverTooltipStyle = computed(() => {
   const info = temporalHoverInfo.value
   if (!info) return {}
   return {
-    left: `${Math.min(info.left + 14, window.innerWidth - 240)}px`,
-    top: `${Math.min(info.top + 14, window.innerHeight - (50 + info.items.length * 24))}px`
+    left: `${Math.max(8, Math.min(info.left + 14, window.innerWidth - 248))}px`,
+    top: `${Math.max(8, Math.min(info.top + 14, window.innerHeight - (58 + info.items.length * 30)))}px`
   }
 })
 
@@ -81,6 +82,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(setupTimer); store.clearTe
   padding: 8px 11px;
   font-size: 12px;
   pointer-events: none;
+  overflow-wrap: anywhere;
 }
 
 .ts-map-tooltip strong {
@@ -97,6 +99,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(setupTimer); store.clearTe
   display: flex;
   gap: 6px;
   color: var(--ink-900);
+  line-height: 1.5;
 }
 
 .ts-map-tooltip b {

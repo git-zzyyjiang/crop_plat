@@ -60,10 +60,11 @@ const PANEL_TAB = { visual: 'visual', series: 'series', analysis: 'analysis' }
 const panelTab = computed(() => PANEL_TAB[tab.value] || 'visual')
 
 const applyTab = value => {
-  // 进「交互识别」就开框选：这时地图上不显示任何作物分类
+  // 进入「交互识别」时先保持地图可拖动，由用户主动切换到“画框”。
   if (value === 'identify') {
     store.clearParcelRoi(false)
     store.startParcelRoiDraw()
+    store.setParcelRoiMode('pan')
   } else if (parcelRoiState.value === 'drawing' || parcelRoiState.value === 'applied') {
     // 其它模块一律不带框选
     store.clearParcelRoi()

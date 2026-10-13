@@ -62,11 +62,12 @@ onMounted(setupPage)
 <style scoped>
 .home-hero {
   position: fixed;
-  top: calc(var(--header-h) + 120px);
-  left: 37px;
+  top: calc(var(--header-h) + 24px);
+  /* 给地图右上角的四个工具按钮留出空间 */
+  right: 76px;
   z-index: 1000;
-  width: min(430px, calc(100vw - 80px));
-  padding: 22px 24px 24px;
+  width: min(390px, calc(100vw - 80px));
+  padding: 18px 20px 20px;
   box-sizing: border-box;
   color: var(--ink-900);
   background-color: rgba(255, 255, 255, 0.9);
@@ -81,18 +82,18 @@ onMounted(setupPage)
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: var(--ink-700);
-  font-size: 27px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1.22;
   letter-spacing: 1px;
 }
 
 .home-hero-desc {
-  margin: 0 0 18px;
-  font-size: 13px;
-  line-height: 1.7;
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.65;
   color: #4a5b74;
   text-align: justify;
 }
@@ -101,9 +102,9 @@ onMounted(setupPage)
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 20px;
+  padding: 8px 18px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   background-image: linear-gradient(#2c93ff, #156ee4);
@@ -119,5 +120,14 @@ onMounted(setupPage)
 
 .home-hero-arrow {
   font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .home-hero {
+    top: calc(var(--header-h) + 78px);
+    right: 14px;
+    left: 14px;
+    width: auto;
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 {
-  "updated_on": "2026-10-06",
+  "updated_on": "2026-10-10",
   "reference_bbox": [
     68,
     40,
@@ -19,10 +19,10 @@
       "temporal_type": "static",
       "web_format": "GeoJSON",
       "auxiliary": false,
-      "file": "01_basemap/rivers_major.geojson",
+      "file": "01_basemap/rivers_major_basin.geojson",
       "type": "vector",
       "crs": "EPSG:4326",
-      "features": 4633,
+      "features": 1050,
       "selection_bbox": [
         68,
         40,
@@ -41,7 +41,7 @@
       "source_product": "HydroRIVERS v1.0 Asia",
       "source_documentation": "https://www.hydrosheds.org/products/hydrorivers",
       "river_names_available": false,
-      "name_label_layer": "01_basemap/rivers_named.geojson",
+      "name_label_layer": "01_basemap/rivers_named_basin.geojson",
       "filter": {
         "ORD_STRA": {
           "gte": 5
@@ -55,7 +55,8 @@
         "7": 428,
         "8": 264
       },
-      "total_reach_length_km": 18575.21
+      "total_reach_length_km": 18575.21,
+      "display_name_layer": "01_basemap/hydro_labels.geojson"
     },
     {
       "id": "lakes",
@@ -110,27 +111,6 @@
       "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_geography_regions_polys.zip"
     },
     {
-      "id": "countries",
-      "name": "国家面（辅助）",
-      "temporal_type": "static",
-      "web_format": "GeoJSON",
-      "auxiliary": true,
-      "file": "02_boundaries/countries.geojson",
-      "type": "vector",
-      "crs": "EPSG:4326",
-      "features": 258,
-      "selection_bbox": null,
-      "selection_method": "global complete dataset",
-      "bounds": [
-        -179.99999999999991,
-        -89.99999999999994,
-        180.0,
-        83.63410065300008
-      ],
-      "repaired_geometries": 1,
-      "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
-    },
-    {
       "id": "country_borders",
       "name": "国家边界",
       "temporal_type": "static",
@@ -150,32 +130,6 @@
       ],
       "repaired_geometries": 0,
       "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_boundary_lines_land.zip"
-    },
-    {
-      "id": "provinces",
-      "name": "州/省面（辅助）",
-      "temporal_type": "static",
-      "web_format": "GeoJSON",
-      "auxiliary": true,
-      "file": "02_boundaries/provinces.geojson",
-      "type": "vector",
-      "crs": "EPSG:4326",
-      "features": 1799,
-      "selection_bbox": [
-        25,
-        -10,
-        180,
-        85
-      ],
-      "selection_method": "retain entire intersecting features; no geometric clipping",
-      "bounds": [
-        -179.99999999999991,
-        -29.17062224691915,
-        180.0,
-        81.85871002800008
-      ],
-      "repaired_geometries": 0,
-      "source": "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_1_states_provinces.zip"
     },
     {
       "id": "province_borders",
@@ -245,18 +199,6 @@
           "#ffffff"
         ]
       },
-      "web_preview": "03_terrain/elevation_m_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        68.0,
-        39.99727284181007,
-        88.00101294902706,
-        49.99999999999999
-      ],
-      "web_preview_size": [
-        2048,
-        1454
-      ],
       "units": "m",
       "source": "Mapzen Terrain Tiles z8"
     },
@@ -302,212 +244,8 @@
           "#004529"
         ]
       },
-      "web_preview": "03_terrain/slope_deg_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        68.0,
-        39.99727284181007,
-        88.00101294902706,
-        49.99999999999999
-      ],
-      "web_preview_size": [
-        2048,
-        1454
-      ],
       "units": "degree",
       "source": "gradient of elevation_m.tif; metric distances corrected by latitude"
-    },
-    {
-      "id": "temperature_2024",
-      "name": "气温 2024",
-      "temporal_type": "annual",
-      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
-      "file": "05_weather/2024/temperature_2024.tif",
-      "type": "raster",
-      "crs": "EPSG:4326",
-      "bounds": [
-        67.875,
-        39.875,
-        88.125,
-        50.125
-      ],
-      "width": 81,
-      "height": 41,
-      "resolution_degrees": [
-        0.25,
-        0.25
-      ],
-      "minimum": -13.073969841003418,
-      "maximum": 17.546306610107422,
-      "valid_pixels": 3321,
-      "nodata": -9999.0,
-      "palette": {
-        "stops": [
-          -10,
-          0,
-          10,
-          20,
-          30
-        ],
-        "colors": [
-          "#313695",
-          "#74add1",
-          "#ffffbf",
-          "#f46d43",
-          "#a50026"
-        ]
-      },
-      "web_preview": "05_weather/2024/temperature_2024_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
-      "year": 2024,
-      "units": "degC",
-      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
-      "period_start": "2024-01-01",
-      "period_end": "2024-12-31",
-      "days": 366,
-      "temporal_complete": true,
-      "aggregation": "daily mean averaged over all available UTC days",
-      "downscaling": "none",
-      "native_resolution_degrees": 0.25,
-      "geojson": "05_weather/2024/temperature_2024.geojson"
-    },
-    {
-      "id": "temperature_2025",
-      "name": "气温 2025",
-      "temporal_type": "annual",
-      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
-      "file": "05_weather/2025/temperature_2025.tif",
-      "type": "raster",
-      "crs": "EPSG:4326",
-      "bounds": [
-        67.875,
-        39.875,
-        88.125,
-        50.125
-      ],
-      "width": 81,
-      "height": 41,
-      "resolution_degrees": [
-        0.25,
-        0.25
-      ],
-      "minimum": -12.904012680053711,
-      "maximum": 18.221370697021484,
-      "valid_pixels": 3321,
-      "nodata": -9999.0,
-      "palette": {
-        "stops": [
-          -10,
-          0,
-          10,
-          20,
-          30
-        ],
-        "colors": [
-          "#313695",
-          "#74add1",
-          "#ffffbf",
-          "#f46d43",
-          "#a50026"
-        ]
-      },
-      "web_preview": "05_weather/2025/temperature_2025_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
-      "year": 2025,
-      "units": "degC",
-      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
-      "period_start": "2025-01-01",
-      "period_end": "2025-12-31",
-      "days": 365,
-      "temporal_complete": true,
-      "aggregation": "daily mean averaged over all available UTC days",
-      "downscaling": "none",
-      "native_resolution_degrees": 0.25,
-      "geojson": "05_weather/2025/temperature_2025.geojson"
-    },
-    {
-      "id": "temperature_2026",
-      "name": "气温 2026（截至9月30日）",
-      "temporal_type": "annual",
-      "web_format": "COG, GeoJSON grid or EPSG:3857 PNG",
-      "file": "05_weather/2026/temperature_2026.tif",
-      "type": "raster",
-      "crs": "EPSG:4326",
-      "bounds": [
-        67.875,
-        39.875,
-        88.125,
-        50.125
-      ],
-      "width": 81,
-      "height": 41,
-      "resolution_degrees": [
-        0.25,
-        0.25
-      ],
-      "minimum": -10.062118530273438,
-      "maximum": 21.423404693603516,
-      "valid_pixels": 3321,
-      "nodata": -9999.0,
-      "palette": {
-        "stops": [
-          -10,
-          0,
-          10,
-          20,
-          30
-        ],
-        "colors": [
-          "#313695",
-          "#74add1",
-          "#ffffbf",
-          "#f46d43",
-          "#a50026"
-        ]
-      },
-      "web_preview": "05_weather/2026/temperature_2026_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
-      "year": 2026,
-      "units": "degC",
-      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
-      "period_start": "2026-01-01",
-      "period_end": "2026-09-30",
-      "days": 273,
-      "temporal_complete": false,
-      "aggregation": "daily mean averaged over all available UTC days",
-      "downscaling": "none",
-      "native_resolution_degrees": 0.25,
-      "geojson": "05_weather/2026/temperature_2026.geojson"
     },
     {
       "id": "precipitation_2024",
@@ -551,18 +289,6 @@
           "#081d58"
         ]
       },
-      "web_preview": "05_weather/2024/precipitation_2024_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
       "year": 2024,
       "units": "mm",
       "source": "Copernicus ERA5 via Open-Meteo AWS open data",
@@ -617,18 +343,6 @@
           "#081d58"
         ]
       },
-      "web_preview": "05_weather/2025/precipitation_2025_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
       "year": 2025,
       "units": "mm",
       "source": "Copernicus ERA5 via Open-Meteo AWS open data",
@@ -683,18 +397,6 @@
           "#081d58"
         ]
       },
-      "web_preview": "05_weather/2026/precipitation_2026_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
       "year": 2026,
       "units": "mm",
       "source": "Copernicus ERA5 via Open-Meteo AWS open data",
@@ -976,7 +678,7 @@
       },
       "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
       "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/5e41e7bae813c4b11c00d571a8cde540/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
-      "latest_scene_datetime": "2024-12-31T06:12:51.024000Z",
+      "latest_scene_datetime": "2024-12-31T06:12:51.024Z",
       "latest_scene_id": "S2A_MSIL2A_20241231T061251_R134_T43UER_20241231T085650",
       "temporal_complete": true,
       "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
@@ -1060,7 +762,7 @@
       },
       "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
       "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6e614453f033341218d5eedf18e4399e/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
-      "latest_scene_datetime": "2025-12-31T06:11:49.024000Z",
+      "latest_scene_datetime": "2025-12-31T06:11:49.024Z",
       "latest_scene_id": "S2B_MSIL2A_20251231T061149_R134_T43TCL_20251231T080226",
       "temporal_complete": true,
       "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
@@ -1144,7 +846,7 @@
       },
       "tilejson_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/WebMercatorQuad/tilejson.json?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0%2C3000&nodata=0&tile_format=png&minzoom=9&maxzoom=14",
       "xyz_url": "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/6b153391fbd5df2bac13dd45426532c3/tiles/WebMercatorQuad/{z}/{x}/{y}.png?collection=sentinel-2-l2a&assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0",
-      "latest_scene_datetime": "2026-10-03T06:27:09.024000Z",
+      "latest_scene_datetime": "2026-10-03T06:27:09.024Z",
       "latest_scene_id": "S2B_MSIL2A_20261003T062709_R077_T42TWR_20261003T102544",
       "temporal_complete": false,
       "aggregation": "multi-date first-valid-pixel mosaic from yearly search, newest scene first; not annual mean",
@@ -1193,10 +895,10 @@
       "temporal_type": "static",
       "web_format": "GeoJSON",
       "auxiliary": true,
-      "file": "01_basemap/rivers_named.geojson",
+      "file": "01_basemap/rivers_named_basin.geojson",
       "type": "vector",
       "crs": "EPSG:4326",
-      "features": 16,
+      "features": 2,
       "selection_bbox": [
         68,
         40,
@@ -1213,6 +915,58 @@
       "repaired_geometries": 0,
       "source": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_rivers_lake_centerlines.zip",
       "role": "auxiliary river-name labels"
+    },
+    {
+      "id": "temperature_daily",
+      "name": "每日气温",
+      "temporal_type": "daily",
+      "web_format": "little-endian Float32",
+      "file": "05_weather/daily_temperature/temperature_daily_YYYY.f32",
+      "metadata": "05_weather/daily_temperature/temperature_daily_static.json",
+      "type": "raster",
+      "crs": "EPSG:4326",
+      "bounds": [
+        67.875,
+        39.875,
+        88.125,
+        50.125
+      ],
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "units": "degC",
+      "source": "Copernicus ERA5 distributed by Open-Meteo",
+      "aggregation": "mean of UTC hours 00..23",
+      "periods": [
+        {
+          "year": 2024,
+          "period_start": "2024-01-01",
+          "period_end": "2024-12-31",
+          "days": 366,
+          "temporal_complete": true
+        },
+        {
+          "year": 2025,
+          "period_start": "2025-01-01",
+          "period_end": "2025-12-31",
+          "days": 365,
+          "temporal_complete": true
+        },
+        {
+          "year": 2026,
+          "period_start": "2026-01-01",
+          "period_end": "2026-10-04",
+          "days": 277,
+          "temporal_complete": false
+        }
+      ],
+      "recommended_color_scale_degC": [
+        -40,
+        40
+      ]
     }
   ],
   "display_layer_count": 19,

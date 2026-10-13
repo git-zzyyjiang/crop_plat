@@ -1,7 +1,6 @@
 <template>
   <div ref="cesiumRef" class="map-container"></div>
   <div v-if="mapLoading || mapError" class="water-map-status float-panel" role="status">{{ mapLoading ? '正在加载三维地块…' : mapError }}<button v-if="mapError" type="button" @click="retryFieldData">重试</button></div>
-  <div v-if="waterYearNotice" class="water-year-notice float-panel" role="status">{{ waterYearNotice }}</div>
   <div class="season-environment-overlay" :style="seasonEnvironmentStyle"></div>
   <div class="sun-direction-overlay" :style="sunDirectionOverlayStyle"></div>
 </template>
@@ -14,6 +13,8 @@ import Feature from "ol/Feature";
 import MVT from "ol/format/MVT";
 import { createXYZ } from "ol/tilegrid";
 import useMapStore from "@/stores/map";
+import { getWaterSeasonYear } from "@/utils/water-timeline";
+import { getCropColor } from "@/utils/crop-colors";
 
 const Cesium = window.Cesium;
 const store = useMapStore();
@@ -30,17 +31,30 @@ const {
   cropWaterLockViewport,
 } = storeToRefs(store);
 
-const emit = defineEmits(["select-field"]);
+const props = defineProps({
+  mode: { type: String, default: "crop" },
+  changeMonth: { type: String, default: "2024-01" },
+  changeFocusRequestId: { type: Number, default: 0 },
+  changeReady: Boolean,
+  changeResultVersion: { type: String, default: "" },
+});
+const emit = defineEmits(["select-field", "change-stats"]);
 
 const cesiumRef = ref(null);
 const mapLoading = ref(true);
 const mapError = ref('');
 let metadataController = null;
+let changeFocusController = null;
+let changeFocusRequestSeq = 0;
+let pendingChangeFocus = false;
+const changeFocusCache = new Map();
 const activeCrop = computed(() => cropWaterActiveCrop.value);
-const waterYearNotice = computed(() => Number(cropWaterActiveDate.value.slice(0,4)) !== 2026 ? "当前模型地块数据仅提供 2026 年" : "");
+const activeMapDate = computed(() => props.mode === "change"
+  ? `${props.changeMonth || "2024-01"}-01`
+  : cropWaterActiveDate.value);
 
 const sunDirectionOverlayStyle = computed(() => {
-  const date = new Date(cropWaterActiveDate.value);
+  const date = new Date(activeMapDate.value);
   const yearStart = new Date(date.getFullYear(), 0, 0);
   const dayOfYear = Number.isFinite(date.getTime())
     ? Math.floor((date.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24))
@@ -54,7 +68,7 @@ const sunDirectionOverlayStyle = computed(() => {
   };
 });
 const seasonEnvironmentStyle = computed(() => {
-  const date = new Date(cropWaterActiveDate.value);
+  const date = new Date(activeMapDate.value);
   const month = Number.isFinite(date.getTime()) ? date.getMonth() + 1 : 1;
   const cropOpacityBoost = activeCrop.value === "vegetables" ? 0.04 : 0;
 
@@ -132,21 +146,25 @@ const cropCodeByKey = {
   winterWheatCorn: 8,
   winterWheatRice: 9,
 };
-const cropColorByCode = {
-  1: "#7CB342",
-  2: "#C0CA33",
-  3: "#AB47BC",
-  4: "#F9A825",
-  5: "#26C6DA",
-  8: "#8D6E63",
-  9: "#42A5F5",
+const cropKeyByCode = Object.fromEntries(
+  Object.entries(cropCodeByKey).map(([key, code]) => [code, key])
+);
+const changeColorByClass = {
+  increase: "#D85B61",
+  decrease: "#4D8FDB",
+  unchanged: "#AAB4BE",
 };
 const mvtFormat = new MVT({
   layers: ["fields"],
   idProperty: "field_id",
   featureClass: Feature,
 });
-const mvtTileGrid = createXYZ({ minZoom: 7, maxZoom: 18, tileSize: 256 });
+const changeMvtFormat = new MVT({
+  layers: ["field_changes"],
+  idProperty: "field_id",
+  featureClass: Feature,
+});
+const mvtTileGrid = createXYZ({ minZoom: 0, maxZoom: 18, tileSize: 256 });
 
 
 
@@ -196,35 +214,44 @@ let seasonalOrbitRollCurrent = 0;
 let seasonalOrbitHeight = null;
 let seasonalOrbitLastTime = 0;
 let mvtFieldDataSource = null;
+let basinBoundaryDataSource = null;
 let mvtMetadata = null;
 let mvtReloadTimer = null;
 let mvtRequestSeq = 0;
 let mvtPendingRequests = new Map();
 let lastMvtAutoFocusedCrop = null;
 let currentMvtCropFeatures = [];
-let currentCylinderVisualMax = 8;
+const cylinderScaleFallback = 12.86;
+const cylinderScaleStorageKey = "cropWaterDailyScaleV1";
+let currentCylinderVisualMax = cylinderScaleFallback;
+let cylinderScaleController = null;
 let lastCylinderAutoFocusKey = null;
 const mvtTileCache = new Map();
 const cylinderCenterCache = new WeakMap();
+const fieldDailyCache = new Map();
+const fieldDailyPendingCache = new Map();
+let loadedMvtYear = null;
+let loadedMvtMode = null;
 
 const animatedCylinderSlices = 40;
 
 const cylinderWfsSrs = "EPSG:4326";
 
 
-const demoMaxCylinderHeight = 260;
+const demoMaxCylinderHeight = 520;
 const zeroValueThreshold = 0.01;
-const labelValueThreshold = 0;
-const cylinderTransitionMs = 12000;
+const labelValueThreshold = zeroValueThreshold;
+const cylinderTransitionMs = 900;
 
-const cropWaterTimelineStartDate = "2024-10-05";
+const cropWaterTimelineStartDate = "2024-01-01";
 
 
 
-const cylinderVisualRadius = 16;
+const cylinderVisualRadius = 46;
 
-const allCylinderFeatureThreshold = 100;
-const sampledCylinderFeatureCount = 80;
+const maxNearbyCylinders = 24;
+const cylinderDataConcurrency = 12;
+const cylinderCameraHeightLimit = 6000;
 const duplicateCylinderCenterDistanceMeters = 12;
 const seasonalFocusCameraHeight = 2000;
 const seasonalMoveSpeed = 0.0009;
@@ -239,7 +266,11 @@ onMounted(async () => {
   }
 
   try {
+    loadCylinderScale();
     viewer = await initCesium();
+    if (isUnmounted) return;
+
+    await initializeBasinBoundary();
     if (isUnmounted) return;
 
     try { await initializeMvtFieldLayer(); } catch (error) {
@@ -251,7 +282,6 @@ onMounted(async () => {
     if (isUnmounted) return;
 
     updateSeasonalVisualization();
-    scheduleMvtFieldReload(0);
     if (cropWaterShowCylinder.value) {
       await addCylinderLayer();
     }
@@ -286,21 +316,169 @@ watch(
 );
 
 watch(
-  () => [cropWaterActiveCrop.value, cropWaterActiveDate.value],
-  ([crop], previous = []) => {
+  () => [cropWaterActiveCrop.value, activeMapDate.value],
+  async ([crop], previous = []) => {
     updateSeasonalVisualization();
+
+    const previousCrop = previous[0];
+    const previousDate = previous[1] || "";
+    const canAnimateCylinderDateChange =
+      props.mode === "crop" &&
+      cropWaterShowCylinder.value &&
+      animatedCylinderItems.length > 0 &&
+      crop === previousCrop &&
+      activeMapDate.value !== previousDate &&
+      activeMapDate.value.slice(0, 4) === previousDate.slice(0, 4);
 
     if (cropWaterShowCylinder.value) {
       currentWaterDataMap = new Map();
-      removeCylinderLayer();
+      if (!canAnimateCylinderDateChange) removeCylinderLayer();
     }
 
-    if (crop !== previous[0]) {
+    if (props.mode === "change") {
+      const requestedYear = getActiveMvtYear();
+      if (requestedYear !== loadedMvtYear) {
+        if (loadedMvtMode === "change" && mvtMetadata) {
+          loadedMvtYear = requestedYear;
+          mvtRequestSeq++;
+          clearMvtPendingRequests();
+          scheduleMvtFieldReload(0);
+          return;
+        }
+        try {
+          await initializeMvtFieldLayer();
+        } catch (error) {
+          if (!isUnmounted && error.name !== "AbortError") mapError.value = "地块变化数据暂时不可用，请检查耗水服务连接";
+        }
+      } else {
+        scheduleMvtFieldReload(0);
+      }
+      return;
+    }
+
+    if (cropWaterActiveDate.value.slice(0, 4) !== (previous[1] || "").slice(0, 4)) {
+      const requestedYear = cropWaterActiveDate.value.slice(0, 4);
+      const cameraSnapshot = captureCameraView();
+      try {
+        await initializeMvtFieldLayer();
+      } catch (error) {
+        if (!isUnmounted && error.name !== "AbortError") mapError.value = "地块数据暂时不可用，请检查耗水服务连接";
+      } finally {
+        if (requestedYear === cropWaterActiveDate.value.slice(0, 4)) {
+          restoreCameraView(cameraSnapshot);
+        }
+      }
+    } else if (crop !== previousCrop) {
       lastMvtAutoFocusedCrop = null;
       lastCylinderAutoFocusKey = null;
-      focusMvtCropFromOverview(crop);
+      if (crop) {
+        focusMvtCropFromOverview(crop);
+      } else {
+        mvtRequestSeq++;
+        clearMvtPendingRequests();
+        mvtFieldDataSource?.entities.removeAll();
+        currentMvtCropFeatures = [];
+        removeCylinderLayer();
+        viewer.scene.requestRender();
+      }
+    } else if (cropWaterShowCylinder.value) {
+      if (canAnimateCylinderDateChange) await updateCylinderLayerForDate();
+      else addCylinderLayer();
+    }
+  }
+);
+
+watch(
+  () => props.changeFocusRequestId,
+  () => {
+    if (props.mode !== "change") return;
+    pendingChangeFocus = true;
+    if (!viewer || !mvtMetadata || loadedMvtMode !== "change") return;
+    focusChangeDenseArea().then((focused) => {
+      if (focused) pendingChangeFocus = false;
+    });
+  }
+);
+
+function captureCameraView() {
+  if (!viewer?.camera) return null;
+
+  return {
+    destination: Cesium.Cartesian3.clone(viewer.camera.positionWC),
+    orientation: {
+      heading: viewer.camera.heading,
+      pitch: viewer.camera.pitch,
+      roll: viewer.camera.roll,
+    },
+  };
+}
+
+function restoreCameraView(snapshot) {
+  if (!viewer?.camera || !snapshot) return;
+
+  viewer.camera.setView(snapshot);
+  viewer.scene.requestRender();
+}
+
+watch(
+  () => props.mode,
+  () => {
+    if (!viewer) return;
+    cropWaterShowCylinder.value = false;
+    metadataController?.abort();
+    clearMvtPendingRequests();
+    mvtRequestSeq++;
+    if (mvtFieldDataSource) {
+      viewer.dataSources.remove(mvtFieldDataSource, true);
+      mvtFieldDataSource = null;
+    }
+    loadedMvtYear = null;
+    loadedMvtMode = null;
+    mvtMetadata = null;
+    currentMvtCropFeatures = [];
+    clearSelectedField();
+    emit("change-stats", null);
+    if (props.mode === "change") {
+      if (!props.changeReady) {
+        mapLoading.value = true;
+        viewer.scene.requestRender();
+        return;
+      }
+      initializeMvtFieldLayer().catch((error) => {
+        if (!isUnmounted && error.name !== "AbortError") {
+          mapError.value = "地块变化数据暂时不可用，请检查耗水服务连接";
+        }
+      });
     } else {
-      scheduleMvtFieldReload(0);
+      loadCylinderScale();
+      initializeMvtFieldLayer().catch((error) => {
+        if (!isUnmounted && error.name !== "AbortError") {
+          mapError.value = "地块数据暂时不可用，请检查耗水服务连接";
+        }
+      });
+    }
+    viewer.scene.requestRender();
+  }
+);
+
+watch(
+  () => [props.changeReady, props.changeResultVersion],
+  async ([ready, version], previous = []) => {
+    if (props.mode !== "change" || !viewer || !ready) return;
+    if (version && version !== previous[1]) {
+      mvtTileCache.clear();
+      changeFocusCache.clear();
+    }
+    pendingChangeFocus = true;
+    mapLoading.value = true;
+    try {
+      await initializeMvtFieldLayer();
+    } catch (error) {
+      if (!isUnmounted && error?.name !== "AbortError") {
+        mapError.value = "地块变化数据暂时不可用，请检查耗水服务连接";
+      }
+    } finally {
+      if (!isUnmounted) mapLoading.value = false;
     }
   }
 );
@@ -380,6 +558,8 @@ watch(
 onBeforeUnmount(() => {
   isUnmounted = true;
   metadataController?.abort();
+  changeFocusController?.abort();
+  cylinderScaleController?.abort();
 
 
   if (cylinderRefreshTimer) {
@@ -395,6 +575,10 @@ onBeforeUnmount(() => {
   if (viewer && mvtFieldDataSource) {
     viewer.dataSources.remove(mvtFieldDataSource, true);
     mvtFieldDataSource = null;
+  }
+  if (viewer && basinBoundaryDataSource) {
+    viewer.dataSources.remove(basinBoundaryDataSource, true);
+    basinBoundaryDataSource = null;
   }
   removeCylinderLayer();
   stopSeasonalOrbit();
@@ -466,55 +650,131 @@ async function initCesium() {
   return viewerInstance;
 }
 
+async function initializeBasinBoundary() {
+  if (!viewer || basinBoundaryDataSource || isUnmounted) return;
+
+  try {
+    const source = await Cesium.GeoJsonDataSource.load(
+      "/data/temporal/basin_boundary.geojson",
+      {
+        stroke: Cesium.Color.RED.withAlpha(0.9),
+        strokeWidth: 5,
+        fill: Cesium.Color.TRANSPARENT,
+        clampToGround: false,
+      }
+    );
+    if (isUnmounted || !viewer) return;
+
+    basinBoundaryDataSource = source;
+    await viewer.dataSources.add(source);
+    if (!cropWaterActiveCrop.value) {
+      await viewer.flyTo(source, {
+        duration: 0.6,
+        offset: new Cesium.HeadingPitchRange(
+          Cesium.Math.toRadians(-8),
+          Cesium.Math.toRadians(-40),
+          0
+        ),
+      });
+    }
+  } catch (error) {
+    console.warn("研究区边界加载失败", error);
+  }
+}
+
+function getActiveMvtTemporalKey() {
+  return props.mode === "change"
+    ? (props.changeMonth || "2024-01")
+    : cropWaterActiveDate.value;
+}
+
+function getChangeCacheKey(month) {
+  return `${props.changeResultVersion || "unversioned"}:${month}`;
+}
+
+function getActiveMvtYear() {
+  const temporalKey = getActiveMvtTemporalKey();
+  return props.mode === "change"
+    ? Number(temporalKey.slice(0, 4))
+    : getWaterSeasonYear(temporalKey);
+}
+
 async function initializeMvtFieldLayer() {
   if (!viewer) return;
 
-  const metadataUrl = `${waterApiBase.replace(/\/$/, "")}/api/water/fields/metadata?year=2026`;
+  const mode = props.mode;
+  if (mode === "change" && !props.changeReady) return;
+  const year = getActiveMvtYear();
+  // 年份或模块变化时先移除旧数据源，避免年度作物颜色与变化分类颜色叠加。
+  if (loadedMvtYear !== year || loadedMvtMode !== mode) {
+    loadedMvtYear = null;
+    loadedMvtMode = null;
+    mvtMetadata = null;
+    mvtRequestSeq++;
+    clearMvtPendingRequests();
+    if (mvtFieldDataSource) {
+      viewer.dataSources.remove(mvtFieldDataSource, true);
+      mvtFieldDataSource = null;
+    }
+    currentMvtCropFeatures = [];
+    removeCylinderLayer();
+    viewer.scene.requestRender();
+  }
+  if (![2024, 2025, 2026].includes(year)) {
+    metadataController?.abort();
+    mapError.value = "";
+    return;
+  }
+  const metadataUrl = mode === "change"
+    ? `${waterApiBase.replace(/\/$/, "")}/api/water/change`
+    : `${waterApiBase.replace(/\/$/, "")}/api/water/fields/metadata?year=${year}`;
   metadataController?.abort();
-  metadataController = new AbortController();
-  const timeout = setTimeout(() => metadataController?.abort(), 8000);
+  const controller = new AbortController();
+  metadataController = controller;
+  const timeout = setTimeout(() => controller.abort(), 8000);
   let response;
-  try { response = await fetch(metadataUrl, { cache: "no-store", signal: metadataController.signal }); }
+  try { response = await fetch(metadataUrl, { cache: "no-store", signal: controller.signal }); }
   finally { clearTimeout(timeout); }
-  if (isUnmounted) return;
+  if (isUnmounted || controller !== metadataController || mode !== props.mode || year !== getActiveMvtYear()) return;
 
   if (!response.ok) {
     throw new Error(`地块元数据请求失败：${response.status}`);
   }
 
   const metadata = await response.json();
-  if (metadata?.layer_name !== "fields") {
-    throw new Error("地块矢量瓦片的 source-layer 必须为 fields");
+  if (controller !== metadataController || mode !== props.mode || year !== getActiveMvtYear()) return;
+  if (!metadata.available) throw new Error(`地块数据未提供：${year}`);
+  const expectedLayerName = mode === "change" ? "field_changes" : "fields";
+  if (metadata?.layer_name !== expectedLayerName) {
+    throw new Error(`地块矢量瓦片的 source-layer 必须为 ${expectedLayerName}`);
   }
 
+  mvtRequestSeq++;
+  clearMvtPendingRequests();
   mvtMetadata = metadata;
+  loadedMvtYear = year;
+  loadedMvtMode = mode;
+  mapError.value = "";
   if (mvtFieldDataSource) viewer.dataSources.remove(mvtFieldDataSource, true);
   mvtFieldDataSource = new Cesium.CustomDataSource("crop-water-mvt-fields");
   await viewer.dataSources.add(mvtFieldDataSource);
 
-  const bounds = Array.isArray(metadata.bounds) ? metadata.bounds.map(Number) : null;
-  if (bounds?.length === 4 && bounds.every(Number.isFinite)) {
-    const centerLon = (bounds[0] + bounds[2]) / 2;
-    const centerLat = (bounds[1] + bounds[3]) / 2;
-    const halfWidth = Math.min((bounds[2] - bounds[0]) / 2, 2.25);
-    const halfHeight = Math.min((bounds[3] - bounds[1]) / 2, 1.4);
-    viewer.camera.setView({
-      destination: Cesium.Rectangle.fromDegrees(
-        centerLon - halfWidth,
-        centerLat - halfHeight,
-        centerLon + halfWidth,
-        centerLat + halfHeight
-      ),
-      orientation: {
-        heading: 0,
-        pitch: Cesium.Math.toRadians(-75),
-        roll: 0,
-      },
-    });
-  } else {
-    flyToFallbackCropExtent();
+  // 仅替换年度数据源，不重置相机。时间轴跨年时保持用户当前比例尺和位置。
+
+  if (!cropWaterActiveCrop.value && props.mode !== "change") {
+    mvtFieldDataSource.entities.removeAll();
+    currentMvtCropFeatures = [];
+    viewer.scene.requestRender();
+    return;
   }
 
+  if (mode === "change" && pendingChangeFocus) {
+    const focused = await focusChangeDenseArea();
+    if (focused) {
+      pendingChangeFocus = false;
+      return;
+    }
+  }
   await reloadVisibleMvtFields();
 }
 
@@ -540,7 +800,21 @@ function scheduleMvtFieldReload(delay = 180) {
 async function reloadVisibleMvtFields() {
   if (!viewer || !mvtFieldDataSource || !mvtMetadata || isUnmounted) return;
 
-  if (Number(cropWaterActiveDate.value.slice(0,4)) !== 2026) {
+  const mode = props.mode;
+  const year = loadedMvtYear;
+  const activeDate = getActiveMvtTemporalKey();
+
+  if (!cropWaterActiveCrop.value && props.mode !== "change") {
+    mvtRequestSeq++;
+    clearMvtPendingRequests();
+    mvtFieldDataSource.entities.removeAll();
+    currentMvtCropFeatures = [];
+    removeCylinderLayer();
+    viewer.scene.requestRender();
+    return [];
+  }
+
+  if (loadedMvtMode !== mode || year !== getActiveMvtYear()) {
     mvtRequestSeq++; clearMvtPendingRequests();
     mvtFieldDataSource.entities.removeAll(); currentMvtCropFeatures = []; removeCylinderLayer();
     viewer.scene.requestRender(); return [];
@@ -560,18 +834,25 @@ async function reloadVisibleMvtFields() {
   }
 
   const { zoom, tiles } = getVisibleMvtTiles(bbox);
-  const activeCode = cropCodeByKey[cropWaterActiveCrop.value] ?? 1;
+  const activeCode = cropCodeByKey[cropWaterActiveCrop.value] ?? null;
+  console.info("[crop-water-map] MVT 请求", JSON.stringify({
+    mode: props.mode,
+    year: loadedMvtYear,
+    date: activeDate,
+    zoom,
+    tiles: tiles.length,
+  }));
   const results = await Promise.allSettled(
-    tiles.map((tile) => loadMvtTileBuffer(tile, requestSeq))
+    tiles.map((tile) => loadMvtTileBuffer(tile, requestSeq, mode, year, activeDate))
   );
 
-  if (requestSeq !== mvtRequestSeq || isUnmounted) return;
+  if (requestSeq !== mvtRequestSeq || isUnmounted || mode !== props.mode || year !== loadedMvtYear || activeDate !== getActiveMvtTemporalKey()) return;
 
   const rejected = results.filter((result) => result.status === "rejected");
   if (rejected.length) {
     console.warn(
       "[crop-water-map] MVT 瓦片加载失败",
-      rejected.map((result) => result.reason?.message || String(result.reason))
+      JSON.stringify(rejected.map((result) => result.reason?.message || String(result.reason)))
     );
   }
 
@@ -581,12 +862,18 @@ async function reloadVisibleMvtFields() {
   for (let index = 0; index < results.length; index++) {
     const result = results[index];
     if (result.status !== "fulfilled" || !result.value) continue;
-    const decoded = decodeMvtTileFeatures(tiles[index], result.value, activeCode);
+    const decoded = decodeMvtTileFeatures(tiles[index], result.value, activeCode, mode);
     decodedCount += decoded.total;
     decoded.codes.forEach((code) => codes.add(code));
     for (const feature of decoded.features) tileFeatures.push(feature);
     await new Promise(resolve => setTimeout(resolve, 0));
     if (requestSeq !== mvtRequestSeq || isUnmounted) return;
+  }
+
+  const uniqueFeatures = dedupeMvtFeatures(tileFeatures);
+
+  if (mode === "change") {
+    emit("change-stats", summarizeChangeFeatures(uniqueFeatures));
   }
 
   console.info(
@@ -597,15 +884,207 @@ async function reloadVisibleMvtFields() {
       decoded: decodedCount,
       rejected: rejected.length,
       codes: Array.from(codes),
+      decodedFeatures: tileFeatures.length,
+      uniqueFeatures: uniqueFeatures.length,
     })
   );
 
-  await renderMvtFieldFeatures(tileFeatures, zoom);
-  return tileFeatures;
+  await renderMvtFieldFeatures(uniqueFeatures, zoom, mode);
+  return uniqueFeatures;
+}
+
+function pickFiniteNumber(source, keys) {
+  for (const key of keys) {
+    const raw = source?.[key];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const value = Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function normalizeChangeFocus(payload) {
+  const row = payload?.data?.data ?? payload?.data ?? payload;
+  if (!row || typeof row !== "object" || row.available === false) return null;
+
+  const center = Array.isArray(row.center)
+    ? { longitude: row.center[0], latitude: row.center[1] }
+    : (row.center ?? row.focus ?? row.location ?? row);
+  let longitude = pickFiniteNumber(center, ["longitude", "lon", "lng", "x", "center_lon", "center_lng", "focus_lon", "focus_lng"]);
+  let latitude = pickFiniteNumber(center, ["latitude", "lat", "y", "center_lat", "focus_lat"]);
+  const bounds = Array.isArray(row.bbox ?? row.bounds ?? row.extent)
+    ? (row.bbox ?? row.bounds ?? row.extent).map(Number)
+    : null;
+  if ((!Number.isFinite(longitude) || !Number.isFinite(latitude)) && bounds?.length >= 4 && bounds.slice(0, 4).every(Number.isFinite)) {
+    longitude = (bounds[0] + bounds[2]) / 2;
+    latitude = (bounds[1] + bounds[3]) / 2;
+  }
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
+
+  const camera = row.camera ?? row.view ?? row.recommended_camera ?? {};
+  const height = pickFiniteNumber(camera, ["height", "height_m", "camera_height", "camera_height_m", "recommended_height_m"])
+    ?? pickFiniteNumber(row, ["height", "height_m", "camera_height", "camera_height_m", "recommended_height_m"])
+    ?? 5200;
+  const heading = pickFiniteNumber(camera, ["heading", "heading_deg"])
+    ?? pickFiniteNumber(row, ["heading", "heading_deg"])
+    ?? -8;
+  const pitch = pickFiniteNumber(camera, ["pitch", "pitch_deg"])
+    ?? pickFiniteNumber(row, ["pitch", "pitch_deg"])
+    ?? -48;
+  return {
+    longitude,
+    latitude,
+    height: Math.max(900, Math.min(height, 50000)),
+    heading,
+    pitch,
+  };
+}
+
+async function focusChangeDenseArea() {
+  if (!viewer || !mvtMetadata || isUnmounted || props.mode !== "change") return false;
+
+  const activeMonth = getActiveMvtTemporalKey();
+  const focusCacheKey = getChangeCacheKey(activeMonth);
+  const cachedTarget = changeFocusCache.get(focusCacheKey);
+  if (cachedTarget) {
+    flyToChangeFocus(cachedTarget);
+    return true;
+  }
+  const requestSeq = ++changeFocusRequestSeq;
+  changeFocusController?.abort();
+  const controller = new AbortController();
+  changeFocusController = controller;
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(
+      `${waterApiBase.replace(/\/$/, "")}/api/water/change/monthly/focus?month=${encodeURIComponent(activeMonth)}&v=${encodeURIComponent(props.changeResultVersion || "unversioned")}`,
+      { signal: controller.signal }
+    );
+    if (!response.ok) throw new Error(`最佳展示区域请求失败：${response.status}`);
+    const target = normalizeChangeFocus(await response.json());
+    if (requestSeq !== changeFocusRequestSeq || isUnmounted || props.mode !== "change" || activeMonth !== getActiveMvtTemporalKey()) return false;
+    if (!target) throw new Error("最佳展示区域未返回有效坐标");
+    changeFocusCache.set(focusCacheKey, target);
+    while (changeFocusCache.size > 40) changeFocusCache.delete(changeFocusCache.keys().next().value);
+    flyToChangeFocus(target);
+    prefetchAdjacentFocus(activeMonth);
+    return true;
+  } catch (error) {
+    if (error?.name !== "AbortError") console.warn("最佳展示区域定位失败，改用瓦片聚合定位", error);
+    if (requestSeq !== changeFocusRequestSeq || isUnmounted || props.mode !== "change" || activeMonth !== getActiveMvtTemporalKey()) return false;
+    return focusChangeDenseAreaFromTiles();
+  } finally {
+    clearTimeout(timeout);
+    if (changeFocusController === controller) changeFocusController = null;
+  }
+}
+
+function flyToChangeFocus(target) {
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(target.longitude, target.latitude, target.height),
+    duration: 0.9,
+    orientation: {
+      heading: Cesium.Math.toRadians(target.heading),
+      pitch: Cesium.Math.toRadians(target.pitch),
+      roll: 0,
+    },
+    complete: () => scheduleMvtFieldReload(0),
+  });
+}
+
+function prefetchAdjacentFocus(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const dates = [new Date(Date.UTC(year, monthNumber - 2, 1)), new Date(Date.UTC(year, monthNumber, 1))];
+  dates.forEach((date) => {
+    const neighbor = date.toISOString().slice(0, 7);
+    if (neighbor < "2024-01" || neighbor > "2026-09") return;
+    const cacheKey = getChangeCacheKey(neighbor);
+    if (changeFocusCache.has(cacheKey)) return;
+    fetch(`${waterApiBase.replace(/\/$/, "")}/api/water/change/monthly/focus?month=${encodeURIComponent(neighbor)}&v=${encodeURIComponent(props.changeResultVersion || "unversioned")}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        const target = normalizeChangeFocus(payload);
+        if (target) changeFocusCache.set(cacheKey, target);
+      })
+      .catch(() => {});
+  });
+}
+
+async function focusChangeDenseAreaFromTiles() {
+  if (!viewer || !mvtMetadata || isUnmounted || props.mode !== "change") return false;
+
+  const bounds = Array.isArray(mvtMetadata.bounds)
+    ? mvtMetadata.bounds.map(Number)
+    : null;
+  if (!bounds?.every(Number.isFinite)) {
+    scheduleMvtFieldReload(0);
+    return false;
+  }
+
+  const mode = props.mode;
+  const year = loadedMvtYear;
+  const activeMonth = getActiveMvtTemporalKey();
+  const requestSeq = ++mvtRequestSeq;
+  clearMvtPendingRequests();
+
+  const minZoom = Number(mvtMetadata.minzoom) || 0;
+  let zoom = Math.max(minZoom, Math.min(Number(mvtMetadata.cluster_maxzoom) || 10, 7));
+  let tiles = createMvtTileList(
+    { west: bounds[0], south: bounds[1], east: bounds[2], north: bounds[3] },
+    zoom
+  );
+  while (tiles.length > 24 && zoom > minZoom) {
+    zoom -= 1;
+    tiles = createMvtTileList(
+      { west: bounds[0], south: bounds[1], east: bounds[2], north: bounds[3] },
+      zoom
+    );
+  }
+
+  const results = await Promise.allSettled(
+    tiles.map((tile) => loadMvtTileBuffer(tile, requestSeq, mode, year, activeMonth))
+  );
+  if (requestSeq !== mvtRequestSeq || isUnmounted || mode !== props.mode || activeMonth !== getActiveMvtTemporalKey()) return false;
+
+  const candidates = [];
+  for (let index = 0; index < results.length; index += 1) {
+    const result = results[index];
+    if (result.status !== "fulfilled" || !result.value) continue;
+    const decoded = decodeMvtTileFeatures(tiles[index], result.value, null, mode);
+    for (const feature of decoded.features) {
+      const coordinate = getFirstMvtCoordinate(feature.coordinates);
+      if (!coordinate?.slice(0, 2).every(Number.isFinite)) continue;
+      const properties = feature.properties || {};
+      const fieldCount = Number(properties.field_count) ||
+        Number(properties.increase_count || 0) +
+        Number(properties.decrease_count || 0) +
+        Number(properties.unchanged_count || 0) || 1;
+      candidates.push({ coordinate, fieldCount });
+    }
+  }
+
+  const target = candidates.sort((a, b) => b.fieldCount - a.fieldCount)[0];
+  if (!target) {
+    scheduleMvtFieldReload(0);
+    return false;
+  }
+
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(target.coordinate[0], target.coordinate[1], 5200),
+    duration: 0.9,
+    orientation: {
+      heading: Cesium.Math.toRadians(-8),
+      pitch: Cesium.Math.toRadians(-48),
+      roll: 0,
+    },
+    complete: () => scheduleMvtFieldReload(0),
+  });
+  return true;
 }
 
 async function focusMvtCropFromOverview(crop) {
-  if (!viewer || !mvtMetadata || isUnmounted) return;
+  if (!viewer || !mvtMetadata || isUnmounted || props.mode === "change") return;
 
   const activeCode = cropCodeByKey[crop];
   const bounds = Array.isArray(mvtMetadata.bounds)
@@ -617,27 +1096,32 @@ async function focusMvtCropFromOverview(crop) {
   }
 
   const requestSeq = ++mvtRequestSeq;
+  const mode = props.mode;
+  const year = loadedMvtYear;
+  const activeDate = cropWaterActiveDate.value;
   clearMvtPendingRequests();
-  const zoom = Number(mvtMetadata.minzoom) || 7;
+  const zoom = Math.max(Number(mvtMetadata.minzoom) || 0, 7);
   const tiles = createMvtTileList(
     { west: bounds[0], south: bounds[1], east: bounds[2], north: bounds[3] },
     zoom
   );
   const results = await Promise.allSettled(
-    tiles.map((tile) => loadMvtTileBuffer(tile, requestSeq))
+    tiles.map((tile) => loadMvtTileBuffer(tile, requestSeq, mode, year, activeDate))
   );
-  if (requestSeq !== mvtRequestSeq || isUnmounted) return;
+  if (requestSeq !== mvtRequestSeq || isUnmounted || mode !== props.mode || year !== loadedMvtYear || activeDate !== cropWaterActiveDate.value) return;
 
   const features = [];
   for (let index = 0; index < results.length; index++) {
     const result = results[index];
     if (result.status !== "fulfilled" || !result.value) continue;
     features.push(
-      ...decodeMvtTileFeatures(tiles[index], result.value, activeCode).features
+      ...decodeMvtTileFeatures(tiles[index], result.value, activeCode, mode).features
     );
   }
 
-  const extent = getMvtCropClusterExtent(features);
+  const uniqueFeatures = dedupeMvtFeatures(features);
+
+  const extent = getMvtCropClusterExtent(uniqueFeatures) || getNearestMvtCropExtent(uniqueFeatures);
   if (!extent) {
     scheduleMvtFieldReload(0);
     return;
@@ -650,12 +1134,40 @@ async function focusMvtCropFromOverview(crop) {
     destination: getCropFocusDestination(extent),
     duration: 0.9,
     orientation: {
-      heading: 0,
-      pitch: Cesium.Math.toRadians(-68),
+      heading: Cesium.Math.toRadians(-8),
+      pitch: Cesium.Math.toRadians(-40),
       roll: 0,
     },
-    complete: () => scheduleMvtFieldReload(0),
   });
+}
+
+function getNearestMvtCropExtent(features) {
+  const cameraRectangle = viewer?.camera?.computeViewRectangle();
+  const cameraCenter = cameraRectangle
+    ? [
+        Cesium.Math.toDegrees((cameraRectangle.west + cameraRectangle.east) / 2),
+        Cesium.Math.toDegrees((cameraRectangle.south + cameraRectangle.north) / 2),
+      ]
+    : null;
+  const centers = features
+    .map((feature) => getFirstMvtCoordinate(feature.coordinates))
+    .filter((coordinate) => coordinate?.length >= 2 && coordinate.slice(0, 2).every(Number.isFinite));
+  if (!centers.length) return null;
+
+  const origin = cameraCenter || centers[0];
+  const nearest = centers.reduce((best, center) =>
+    getCenterDistanceMeters(center, origin) < getCenterDistanceMeters(best, origin)
+      ? center
+      : best
+  );
+  return {
+    lon: nearest[0],
+    lat: nearest[1],
+    west: nearest[0] - 0.018,
+    east: nearest[0] + 0.018,
+    south: nearest[1] - 0.014,
+    north: nearest[1] + 0.014,
+  };
 }
 
 function getMvtCropClusterExtent(features) {
@@ -677,37 +1189,130 @@ function getMvtCropClusterExtent(features) {
     cells.set(key, cell);
   }
   const best = [...cells.values()].sort((a, b) => b.count - a.count)[0];
-  const centerLon = best.lon / best.count;
-  const centerLat = best.lat / best.count;
-  const cluster = centers.filter(
-    ([lon, lat]) => Math.abs(lon - centerLon) <= 0.7 && Math.abs(lat - centerLat) <= 0.55
+  const averageLon = best.lon / best.count;
+  const averageLat = best.lat / best.count;
+  const representative = centers.reduce((nearest, center) =>
+    Math.hypot(center[0] - averageLon, center[1] - averageLat) <
+    Math.hypot(nearest[0] - averageLon, nearest[1] - averageLat) ? center : nearest
   );
-  const selected = cluster.length >= 8 ? cluster : centers;
-  const longitudes = selected.map((item) => item[0]).sort((a, b) => a - b);
-  const latitudes = selected.map((item) => item[1]).sort((a, b) => a - b);
-  const west = getQuantile(longitudes, 0.05);
-  const east = getQuantile(longitudes, 0.95);
-  const south = getQuantile(latitudes, 0.05);
-  const north = getQuantile(latitudes, 0.95);
-
+  const centerLon = representative[0];
+  const centerLat = representative[1];
   return {
     lon: centerLon,
     lat: centerLat,
-    west: west - Math.max((east - west) * 0.15, 0.03),
-    east: east + Math.max((east - west) * 0.15, 0.03),
-    south: south - Math.max((north - south) * 0.15, 0.025),
-    north: north + Math.max((north - south) * 0.15, 0.025),
+    west: centerLon - 0.02,
+    east: centerLon + 0.02,
+    south: centerLat - 0.02,
+    north: centerLat + 0.02,
   };
+}
+
+// A field may be returned by more than one visible vector tile.  At exact
+// geometry zoom the backend can return the same buffered geometry from both
+// tiles, so rendering every tile feature creates a second polygon on top of
+// the real field.  Keep legitimate multipart geometries, but drop identical
+// geometries for the same field across tile boundaries.
+function dedupeMvtFeatures(features) {
+  const seen = new Set();
+  const unique = [];
+
+  for (const feature of features || []) {
+    const fieldKey = feature.properties?.field_id ?? feature.id ?? "unknown";
+    const geometryKey = getMvtGeometryKey(feature.geometryType, feature.coordinates);
+    const key = `${fieldKey}:${geometryKey}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(feature);
+  }
+
+  if (unique.length !== (features || []).length) {
+    console.info("[crop-water-map] MVT 重复地块已去重", JSON.stringify({
+      before: (features || []).length,
+      after: unique.length,
+    }));
+  }
+  return normalizeChangeClassesByField(unique);
+}
+
+function normalizeChangeClassesByField(features) {
+  if (props.mode !== "change") return features;
+  const classByField = new Map();
+
+  for (const feature of features) {
+    const fieldId = normalizeFeatureId(feature.properties?.field_id ?? feature.properties?.gid ?? feature.id);
+    if (fieldId === null) continue;
+    const delta = Number(feature.properties?.delta);
+    const inferredClass = Number.isFinite(delta)
+      ? (delta > 0 ? "increase" : delta < 0 ? "decrease" : "unchanged")
+      : feature.properties?.change_class;
+    if (!classByField.has(fieldId) && changeColorByClass[inferredClass]) {
+      classByField.set(fieldId, inferredClass);
+    }
+  }
+
+  return features.map((feature) => {
+    const fieldId = normalizeFeatureId(feature.properties?.field_id ?? feature.properties?.gid ?? feature.id);
+    const changeClass = fieldId === null ? null : classByField.get(fieldId);
+    if (!changeClass || feature.properties?.change_class === changeClass) return feature;
+    return { ...feature, properties: { ...feature.properties, change_class: changeClass } };
+  });
+}
+
+function summarizeChangeFeatures(features) {
+  const counts = { increase: 0, decrease: 0, unchanged: 0 };
+  const seenFields = new Set();
+
+  for (const feature of features || []) {
+    const fieldId = normalizeFeatureId(
+      feature.properties?.field_id ?? feature.properties?.gid ?? feature.id
+    );
+    const changeClass = feature.properties?.change_class;
+    if (fieldId === null || seenFields.has(fieldId)) continue;
+    seenFields.add(fieldId);
+    if (changeClass === "increase") counts.increase++;
+    else if (changeClass === "decrease") counts.decrease++;
+    else if (changeClass === "unchanged") counts.unchanged++;
+  }
+
+  const total = counts.increase + counts.decrease + counts.unchanged;
+  if (!total) return null;
+  return {
+    rising: counts.increase,
+    falling: counts.decrease,
+    stable: counts.unchanged,
+    total,
+    scope: "当前地图范围",
+  };
+}
+
+function getMvtGeometryKey(type, coordinates) {
+  // MVT coordinates can differ by tiny floating-point amounts between tiles;
+  // 5 decimal places is sub-meter-ish at this map scale and avoids false
+  // negatives without merging separate neighbouring shapes.
+  const rounded = JSON.stringify(normalizeCoordinates(coordinates));
+  return `${type || "unknown"}:${rounded}`;
+}
+
+function normalizeCoordinates(value) {
+  if (!Array.isArray(value)) return value;
+  if (value.length && typeof value[0] === "number") {
+    return value.map((number) => Number.isFinite(number) ? Number(number.toFixed(5)) : number);
+  }
+  return value.map(normalizeCoordinates);
 }
 
 function getVisibleMvtTiles(bbox) {
   const canvasWidth = Math.max(viewer?.scene?.canvas?.clientWidth || 900, 320);
   const lonSpan = Math.max(bbox.east - bbox.west, 0.0001);
-  const metadataMinZoom = Number(mvtMetadata?.minzoom) || 7;
+  // 变化接口在 0—10 级返回聚合点，11 级返回简化地块，12 级以上返回精确地块。
+  const metadataMinZoom = props.mode === "change"
+    ? 0
+    : Number(mvtMetadata?.minzoom) || 7;
   const metadataMaxZoom = Number(mvtMetadata?.maxzoom) || 18;
+  const requestedZoom = Math.floor(Math.log2((360 * canvasWidth) / (256 * lonSpan))) + 1;
   let zoom = clamp(
     metadataMinZoom,
-    Math.floor(Math.log2((360 * canvasWidth) / (256 * lonSpan))) + 1,
+    requestedZoom,
     Math.min(metadataMaxZoom, 13)
   );
   let tiles = createMvtTileList(bbox, zoom);
@@ -767,70 +1372,163 @@ function clipBboxToMvtBounds(bbox) {
     : null;
 }
 
-async function loadMvtTileBuffer(tile, requestSeq) {
-  const cached = mvtTileCache.get(tile.key);
+async function loadMvtTileBuffer(tile, requestSeq, mode, year, activeDate) {
+  const cacheKey = `${mode}:${mode === "change" ? props.changeResultVersion : year}:${activeDate}:${tile.key}`;
+  const cached = mvtTileCache.get(cacheKey);
   if (cached) {
-    mvtTileCache.delete(tile.key);
-    mvtTileCache.set(tile.key, cached);
+    mvtTileCache.delete(cacheKey);
+    mvtTileCache.set(cacheKey, cached);
     return cached;
   }
 
   const controller = new AbortController();
-  mvtPendingRequests.set(tile.key, controller);
-  const url = `${waterApiBase.replace(/\/$/, "")}/api/water/fields/tiles/${tile.z}/${tile.x}/${tile.y}.pbf?year=2026&schema=crop-v2`;
+  mvtPendingRequests.set(cacheKey, controller);
+  const url = mode === "change"
+    ? `${waterApiBase.replace(/\/$/, "")}/api/water/change/monthly/tiles/${tile.z}/${tile.x}/${tile.y}.mvt?month=${activeDate}&v=${encodeURIComponent(props.changeResultVersion || "unversioned")}`
+    : `${waterApiBase.replace(/\/$/, "")}/api/water/fields/tiles/${tile.z}/${tile.x}/${tile.y}.pbf?year=${year}`;
 
   try {
     const response = await fetch(url, {
       signal: controller.signal,
-      cache: "no-store",
     });
-    if (!response.ok) throw new Error(`MVT ${response.status}: ${tile.key}`);
+    if (!response.ok) throw new Error(`MVT ${response.status}: ${url}`);
 
     const buffer = await response.arrayBuffer();
-    if (requestSeq !== mvtRequestSeq || controller.signal.aborted) return null;
+    if (requestSeq !== mvtRequestSeq || controller.signal.aborted || mode !== props.mode || year !== loadedMvtYear || activeDate !== getActiveMvtTemporalKey()) return null;
 
-    cacheMvtTile(tile.key, buffer);
+    cacheMvtTile(cacheKey, buffer);
     return buffer;
   } finally {
-    if (mvtPendingRequests.get(tile.key) === controller) {
-      mvtPendingRequests.delete(tile.key);
+    if (mvtPendingRequests.get(cacheKey) === controller) {
+      mvtPendingRequests.delete(cacheKey);
     }
   }
 }
 
-function decodeMvtTileFeatures(tile, buffer, activeCode) {
+function decodeMvtTileFeatures(tile, buffer, activeCode, mode) {
   const extent = mvtTileGrid.getTileCoordExtent([tile.z, tile.x, tile.y]);
-  const sourceFeatures = mvtFormat.readFeatures(buffer, {
+  const sourceFeatures = (mode === "change" ? changeMvtFormat : mvtFormat).readFeatures(buffer, {
     extent,
     featureProjection: "EPSG:3857",
   });
   const features = [];
   const codes = new Set();
-
   for (const feature of sourceFeatures) {
     const properties = { ...feature.getProperties() };
     delete properties.geometry;
     const code = Number(properties.max_value ?? properties.crop_code);
     codes.add(Number.isFinite(code) ? code : null);
-    if (!supportedCropCodes.has(code) || code !== activeCode) continue;
+    if (mode !== "change" && (!supportedCropCodes.has(code) || code !== activeCode)) continue;
 
     const geometry = feature.getGeometry();
-    if (geometry) geometry.transform("EPSG:3857", "EPSG:4326");
+    if (!geometry) continue;
+
+    // ST_AsMVTGeom uses a 64-unit buffer around every tile.  The buffer is
+    // useful for native vector-tile renderers, but Cesium receives each tile
+    // fragment as an independent polygon, so the buffered area would be
+    // painted again by the neighbouring tile. Clip in Web Mercator before
+    // converting to lon/lat so cross-tile fields remain complete without
+    // drawing the buffer twice.
+    const clippedCoordinates = clipMvtGeometryToTile(
+      geometry.getType(),
+      geometry.getCoordinates(),
+      extent
+    );
+    if (!clippedCoordinates) continue;
+
+    const clippedGeometry = geometry.clone();
+    clippedGeometry.setCoordinates(clippedCoordinates);
+    clippedGeometry.transform("EPSG:3857", "EPSG:4326");
     features.push({
       tileKey: tile.key,
       id: feature.getId() ?? properties.field_id ?? properties.gid,
       properties,
-      geometryType: geometry?.getType(),
-      coordinates: geometry?.getCoordinates(),
+      geometryType: clippedGeometry.getType(),
+      coordinates: clippedGeometry.getCoordinates(),
     });
   }
 
   return { features, total: sourceFeatures.length, codes };
 }
 
+function clipMvtGeometryToTile(type, coordinates, extent) {
+  if (type === "Polygon") {
+    return clipMvtPolygonToExtent(coordinates, extent);
+  }
+  if (type === "MultiPolygon") {
+    const polygons = coordinates
+      .map((polygon) => clipMvtPolygonToExtent(polygon, extent))
+      .filter(Boolean);
+    return polygons.length ? polygons : null;
+  }
+  return coordinates;
+}
+
+function clipMvtPolygonToExtent(rings, extent) {
+  if (!Array.isArray(rings) || !rings.length) return null;
+  const clippedRings = rings
+    .map((ring) => clipMvtRingToExtent(ring, extent))
+    .filter((ring) => ring && ring.length >= 4);
+  return clippedRings.length ? clippedRings : null;
+}
+
+function clipMvtRingToExtent(ring, extent) {
+  if (!Array.isArray(ring) || ring.length < 3) return null;
+  let output = ring
+    .filter((point) => Array.isArray(point) && point.length >= 2)
+    .map((point) => [Number(point[0]), Number(point[1])]);
+  if (output.length < 3 || output.some((point) => !point.every(Number.isFinite))) return null;
+
+  const edges = [
+    { inside: (point) => point[0] >= extent[0], intersect: (a, b) => intersectMvtVertical(a, b, extent[0]) },
+    { inside: (point) => point[0] <= extent[2], intersect: (a, b) => intersectMvtVertical(a, b, extent[2]) },
+    { inside: (point) => point[1] >= extent[1], intersect: (a, b) => intersectMvtHorizontal(a, b, extent[1]) },
+    { inside: (point) => point[1] <= extent[3], intersect: (a, b) => intersectMvtHorizontal(a, b, extent[3]) },
+  ];
+
+  for (const edge of edges) {
+    if (!output.length) return null;
+    const input = output;
+    output = [];
+    let previous = input[input.length - 1];
+    let previousInside = edge.inside(previous);
+    for (const current of input) {
+      const currentInside = edge.inside(current);
+      if (currentInside !== previousInside) {
+        output.push(edge.intersect(previous, current));
+      }
+      if (currentInside) output.push(current);
+      previous = current;
+      previousInside = currentInside;
+    }
+  }
+
+  const compact = output.filter((point, index) => {
+    const previous = output[(index + output.length - 1) % output.length];
+    return point[0] !== previous[0] || point[1] !== previous[1];
+  });
+  if (compact.length < 3) return null;
+  const first = compact[0];
+  const last = compact[compact.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) compact.push([...first]);
+  return compact;
+}
+
+function intersectMvtVertical(a, b, x) {
+  const denominator = b[0] - a[0];
+  const ratio = denominator ? (x - a[0]) / denominator : 0;
+  return [x, a[1] + (b[1] - a[1]) * ratio];
+}
+
+function intersectMvtHorizontal(a, b, y) {
+  const denominator = b[1] - a[1];
+  const ratio = denominator ? (y - a[1]) / denominator : 0;
+  return [a[0] + (b[0] - a[0]) * ratio, y];
+}
+
 function cacheMvtTile(key, features) {
   mvtTileCache.set(key, features);
-  while (mvtTileCache.size > 32) {
+  while (mvtTileCache.size > 512) {
     mvtTileCache.delete(mvtTileCache.keys().next().value);
   }
 }
@@ -840,14 +1538,19 @@ function clearMvtPendingRequests() {
   mvtPendingRequests.clear();
 }
 
-async function renderMvtFieldFeatures(features, zoom) {
+async function renderMvtFieldFeatures(features, zoom, mode) {
   if (!mvtFieldDataSource) return;
 
   currentMvtCropFeatures = features;
   mvtFieldDataSource.entities.removeAll();
-  const overview = zoom < Number(mvtMetadata?.polygon_minzoom || 9);
+  // 年度监测保持原有点/面策略；时空变化按后端三级瓦片协议显示。
+  const overview = mode === "change"
+    ? zoom <= 10
+    : zoom < Number(mvtMetadata?.exact_geometry_minzoom || 12);
   const revision = mvtRequestSeq;
-  const maxFeatures = overview ? 4000 : 1600;
+  const maxFeatures = mode === "change"
+    ? (overview ? 12000 : 5000)
+    : (overview ? 4000 : 1600);
   const step = Math.max(1, Math.ceil(features.length / maxFeatures));
 
   console.info(
@@ -862,6 +1565,7 @@ async function renderMvtFieldFeatures(features, zoom) {
   );
 
   const entities = mvtFieldDataSource.entities;
+  const seenOverviewFields = new Set();
   entities.suspendEvents();
   try {
   for (let index = 0; index < features.length; index += step) {
@@ -871,19 +1575,30 @@ async function renderMvtFieldFeatures(features, zoom) {
       if (revision !== mvtRequestSeq || isUnmounted || !viewer) return;
     }
     const feature = features[index];
+    const fieldKey = feature.properties?.field_id ?? feature.id;
+    if (overview && fieldKey != null && seenOverviewFields.has(fieldKey)) continue;
+    if (overview && fieldKey != null) seenOverviewFields.add(fieldKey);
     const code = Number(feature.properties.max_value ?? feature.properties.crop_code);
-    const color = Cesium.Color.fromCssColorString(cropColorByCode[code] || "#26C6DA");
+    const color = Cesium.Color.fromCssColorString(
+      mode === "change"
+        ? changeColorByClass[feature.properties?.change_class] || "#AAB4BE"
+      : getCropColor(code)
+    );
 
-    if (overview) {
-      addMvtOverviewEntity(feature, color, index);
+    const isChangeCluster = mode === "change" && (
+      ["cluster", "monthly_cluster"].includes(feature.properties?.data_scope) || feature.geometryType === "Point"
+    );
+    if (overview || isChangeCluster) {
+      addMvtOverviewEntity(feature, color, index, mode);
     } else {
-      addMvtPolygonEntities(feature, color, index);
+      addMvtPolygonEntities(feature, color, index, mode);
     }
   }
 
   } finally { entities.resumeEvents(); }
   if (revision !== mvtRequestSeq || isUnmounted || !viewer) return;
-  focusMvtCropFeatures(features);
+  // 只在用户切换作物时由 focusMvtCropFromOverview 调整视角。
+  // 日期、年份或瓦片刷新只替换图层，不改变相机。
 
   if (cropWaterShowCylinder.value && features.length) {
     if (cylinderRefreshTimer) clearTimeout(cylinderRefreshTimer);
@@ -898,29 +1613,10 @@ async function renderMvtFieldFeatures(features, zoom) {
 
 function focusMvtCropFeatures(features) {
   const crop = cropWaterActiveCrop.value;
-  if (!viewer || !features.length || lastMvtAutoFocusedCrop === crop) return;
+  if (!viewer || !crop || !features.length || lastMvtAutoFocusedCrop === crop) return;
 
-  const centers = features
-    .map((feature) => getFirstMvtCoordinate(feature.coordinates))
-    .filter((coordinate) =>
-      coordinate?.length >= 2 && coordinate.slice(0, 2).every(Number.isFinite)
-    );
-  if (!centers.length) return;
-
-  const longitudes = centers.map((coordinate) => coordinate[0]).sort((a, b) => a - b);
-  const latitudes = centers.map((coordinate) => coordinate[1]).sort((a, b) => a - b);
-  const west = getQuantile(longitudes, 0.04);
-  const east = getQuantile(longitudes, 0.96);
-  const south = getQuantile(latitudes, 0.04);
-  const north = getQuantile(latitudes, 0.96);
-  const lonPadding = Math.max((east - west) * 0.12, 0.025);
-  const latPadding = Math.max((north - south) * 0.12, 0.02);
-  const extent = {
-    west: west - lonPadding,
-    south: south - latPadding,
-    east: east + lonPadding,
-    north: north + latPadding,
-  };
+  const extent = getMvtCropClusterExtent(features);
+  if (!extent) return;
 
   cropWaterLayerExtents.set(crop, extent);
   lastMvtAutoFocusedCrop = crop;
@@ -933,32 +1629,36 @@ function focusMvtCropFeatures(features) {
     ),
     duration: 0.8,
     orientation: {
-      heading: 0,
-      pitch: Cesium.Math.toRadians(-75),
+      heading: Cesium.Math.toRadians(-8),
+      pitch: Cesium.Math.toRadians(-40),
       roll: 0,
     },
   });
 }
 
-function addMvtOverviewEntity(feature, color, index) {
+function addMvtOverviewEntity(feature, color, index, mode) {
   const coordinate = getFirstMvtCoordinate(feature.coordinates);
   if (!coordinate) return;
+  const fieldCount = Math.max(Number(feature.properties?.field_count) || 1, 1);
+  const pixelSize = mode === "change"
+    ? clamp(7, 5 + Math.log2(fieldCount + 1) * 1.7, 20)
+    : 4;
 
   const entity = mvtFieldDataSource.entities.add({
     id: `mvt-point:${feature.tileKey}:${feature.id}:${index}`,
     position: Cesium.Cartesian3.fromDegrees(coordinate[0], coordinate[1], 0),
     point: {
-      pixelSize: 4,
-      color: color.withAlpha(0.58),
-      outlineColor: Cesium.Color.WHITE.withAlpha(0.72),
-      outlineWidth: 0.5,
+      pixelSize,
+      color: color.withAlpha(mode === "change" ? 0.88 : 0.72),
+      outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
+      outlineWidth: mode === "change" ? 1.5 : 0.5,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
     },
   });
   entity.mvtFieldProperties = feature.properties;
 }
 
-function addMvtPolygonEntities(feature, color, featureIndex) {
+function addMvtPolygonEntities(feature, color, featureIndex, mode) {
   const polygons =
     feature.geometryType === "Polygon"
       ? [feature.coordinates]
@@ -974,7 +1674,7 @@ function addMvtPolygonEntities(feature, color, featureIndex) {
       id: `mvt-polygon:${feature.tileKey}:${feature.id}:${featureIndex}:${polygonIndex}`,
       polygon: {
         hierarchy,
-        material: color.withAlpha(0.42),
+        material: color.withAlpha(0.62),
         outline: true,
         outlineColor: color.brighten(0.32, new Cesium.Color()).withAlpha(0.96),
         outlineWidth: 1.2,
@@ -1025,8 +1725,8 @@ function flyToFallbackCropExtent() {
     ),
     duration: 1.2,
     orientation: {
-      heading: Cesium.Math.toRadians(0),
-      pitch: Cesium.Math.toRadians(-75),
+      heading: Cesium.Math.toRadians(-8),
+      pitch: Cesium.Math.toRadians(-40),
       roll: 0,
     },
   });
@@ -1112,8 +1812,8 @@ async function focusCropArea(crop) {
     destination: getCropFocusDestination(extent),
     duration: 1.1,
     orientation: {
-      heading: Cesium.Math.toRadians(0),
-      pitch: Cesium.Math.toRadians(-90),
+      heading: Cesium.Math.toRadians(-8),
+      pitch: Cesium.Math.toRadians(-40),
       roll: 0,
     },
     complete: () => {
@@ -1139,7 +1839,7 @@ function getCropFocusDestination(extent) {
   const lonMeters =
     lonSpan * 111320 * Math.max(Math.cos(Cesium.Math.toRadians(lat)), 0.2);
   const latMeters = latSpan * 110540;
-  const height = clamp(2600, Math.max(lonMeters, latMeters) * 2.6, 22000);
+  const height = clamp(2200, Math.max(lonMeters, latMeters) * 1.35, 6500);
 
   return Cesium.Cartesian3.fromDegrees(lon, lat, height);
 }
@@ -1331,6 +2031,25 @@ function enableClickInfo() {
       selectedWaterFieldId = String(fieldInfo.objectId);
       refreshCylinderLabelVisibility();
       emit("select-field", fieldInfo);
+      if (props.mode === "change") return;
+      const year = getWaterSeasonYear(cropWaterActiveDate.value);
+      const date = cropWaterActiveDate.value;
+      if (year) {
+        const row = await loadFieldDaily(fieldInfo.objectId, year, date);
+        if (selectedWaterFieldId !== String(fieldInfo.objectId) || cropWaterActiveDate.value !== date) return;
+        emit("select-field", {
+          ...fieldInfo,
+          area:
+            fieldInfo.area ??
+            (getNullableFiniteNumber(row?.field_area_m2) == null
+              ? null
+              : formatNumber(row.field_area_m2)),
+          waterAvailable: !!row,
+          dailyWater: getNullableFiniteNumber(row?.total_eta_mm),
+          blueWater: getNullableFiniteNumber(row?.blue_water_mm),
+          greenWater: getNullableFiniteNumber(row?.green_water_mm),
+        });
+      }
     } catch (error) {
       console.warn("GetFeatureInfo failed.", error);
       clearSelectedField();
@@ -1404,10 +2123,11 @@ function buildFieldInfoFromProperties(props, fallbackId) {
     "OBJECTID",
     "objectid",
     "field_id",
+    "gid",
     "FID_1",
     "FID",
     "id"
-  ) ?? fallbackId ?? "unknown";
+  ) ?? fallbackId ?? null;
   const area = pickProperty(
     props,
     "Shape_Area",
@@ -1456,6 +2176,7 @@ function buildFieldInfoFromProperties(props, fallbackId) {
       props.OBJECTID,
       props.objectid,
       props.field_id,
+      props.gid,
       props.FID_1,
       props.FID,
     ]
@@ -1470,9 +2191,9 @@ function buildFieldInfoFromProperties(props, fallbackId) {
     cropCode: Number.isFinite(cropCode) ? cropCode : null,
     cropName: props.crop_name ?? getCropNameByCode(cropCode),
     cropSupported: props.crop_supported !== false,
-    waterAvailable: props.water_available === true,
-    area: formatNumber(area ?? "unknown"),
-    length: formatNumber(length ?? "unknown"),
+    waterAvailable: !!waterData,
+    area: area == null ? null : formatNumber(area),
+    length: length == null ? null : formatNumber(length),
     dailyWater: getNullableFiniteNumber(
       waterData?.dailyWater ?? waterData?.eta ?? waterData?.eta_mm
     ),
@@ -1488,6 +2209,10 @@ function buildFieldInfoFromProperties(props, fallbackId) {
     irrigationWater: getNullableFiniteNumber(
       waterData?.irrigationWater ?? waterData?.irrigation_use_mm
     ),
+    monthlyCurrent: getNullableFiniteNumber(props.current_value),
+    monthlyPrevious: getNullableFiniteNumber(props.previous_value),
+    monthlyDelta: getNullableFiniteNumber(props.delta),
+    changeClass: props.change_class ?? null,
   };
 }
 
@@ -1500,7 +2225,7 @@ function getCropNameByCode(code) {
     5: "水稻",
     8: "冬小麦—玉米轮作",
     9: "冬小麦—水稻轮作",
-  }[Number(code)] ?? "未命名作物";
+  }[Number(code)] ?? null;
 }
 
 function pickProperty(source, ...keys) {
@@ -1644,16 +2369,78 @@ function getDemoCylinderHeightFromValue(value) {
 
   if (v <= 0) return 0;
 
-  const minHeight = 24;
   const maxHeight = demoMaxCylinderHeight;
   const maxValue = Math.max(currentCylinderVisualMax, 0.01);
   const normalizedValue = Math.min(v / maxValue, 1);
-  const softenedValue = Math.pow(normalizedValue, 0.78);
 
-  return Math.min(
-    maxHeight,
-    minHeight + softenedValue * (maxHeight - minHeight)
-  );
+  return Math.min(maxHeight, normalizedValue * maxHeight);
+}
+
+async function loadCylinderScale() {
+  if (props.mode !== "crop" || cylinderScaleController) return;
+
+  try {
+    const cached = JSON.parse(localStorage.getItem(cylinderScaleStorageKey) || "null");
+    const cachedMax = Number(cached?.global_max);
+    if (Number.isFinite(cachedMax) && cachedMax > 0) {
+      currentCylinderVisualMax = cachedMax;
+    }
+  } catch (error) {
+    console.warn("读取水柱全局量程缓存失败", error);
+  }
+
+  const controller = new AbortController();
+  cylinderScaleController = controller;
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const url = `${waterApiBase.replace(/\/$/, "")}/api/water/fields/daily/scale`;
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    const row = payload?.data?.data ?? payload?.data ?? payload;
+    const globalMax = Number(row?.global_max);
+    if (!Number.isFinite(globalMax) || globalMax <= 0) {
+      throw new Error("量程接口没有返回有效 global_max");
+    }
+
+    const previousMax = currentCylinderVisualMax;
+    currentCylinderVisualMax = globalMax;
+    try {
+      localStorage.setItem(cylinderScaleStorageKey, JSON.stringify({
+        global_max: globalMax,
+        metric: row?.metric || "total_eta_mm",
+        unit: row?.unit || "mm",
+      }));
+    } catch (error) {
+      console.warn("缓存水柱全局量程失败", error);
+    }
+
+    console.info("[crop-water-map] global cylinder scale loaded", {
+      globalMax,
+      metric: row?.metric,
+      unit: row?.unit,
+    });
+
+    if (
+      Math.abs(previousMax - globalMax) > 0.001 &&
+      viewer && cropWaterShowCylinder.value && props.mode === "crop"
+    ) {
+      addCylinderLayer();
+    }
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      console.warn("全局水柱量程请求失败，使用缓存或默认量程", {
+        url,
+        fallback: currentCylinderVisualMax,
+        error,
+      });
+    }
+  } finally {
+    clearTimeout(timeoutId);
+    if (cylinderScaleController === controller) cylinderScaleController = null;
+  }
 }
 function getCylinderTransitionDuration() {
   return cylinderTransitionMs;
@@ -1688,13 +2475,13 @@ function shouldShowCylinderLabel(item) {
 }
 
 function shouldShowCylinderBody(item) {
-  return Number(item?.targetValue) > zeroValueThreshold && Number(item?.currentHeight) > 1;
+  return Math.max(Number(item?.targetValue) || 0, Number(item?.currentValue) || 0) > zeroValueThreshold && Number(item?.currentHeight) > 1;
 }
 
 function shouldShowCylinderDisk(item) {
-  const targetValue = Number(item?.targetValue);
+  const targetValue = Math.max(Number(item?.targetValue) || 0, Number(item?.currentValue) || 0);
 
-  return Number.isFinite(targetValue) && targetValue >= labelValueThreshold;
+  return Number.isFinite(targetValue) && targetValue >= labelValueThreshold && Number(item?.currentHeight) > 1;
 }
 
 function refreshCylinderLabelVisibility() {
@@ -1817,25 +2604,18 @@ function getCenterDistanceMeters(a, b) {
 }
 
 function selectCylinderFeaturesForViewport(features) {
-  if (features.length <= allCylinderFeatureThreshold) {
-    return features;
-  }
-
-  const randomSeed = cropWaterViewportCrop.value || cropWaterActiveCrop.value || "all";
-
+  const rectangle = viewer?.camera?.computeViewRectangle();
+  if (!rectangle) return [];
+  const centerLon = Cesium.Math.toDegrees((rectangle.west + rectangle.east) / 2);
+  const centerLat = Cesium.Math.toDegrees((rectangle.south + rectangle.north) / 2);
   return [...features]
-    .map((feature, index) => {
-      const objectId = getFeatureObjectId(feature, index);
-      const crop = getFeatureCrop(feature);
-
-      return {
-        feature,
-        score: seededRandom(hashString(`${randomSeed}:${crop}:${objectId}:${index}`)),
-      };
+    .map((feature) => {
+      const center = getFeatureCenter(feature);
+      return { feature, distance: center ? getCenterDistanceMeters(center, [centerLon, centerLat]) : Infinity };
     })
-    .sort((a, b) => a.score - b.score)
-    .slice(0, sampledCylinderFeatureCount)
-    .map((item) => item.feature);
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, maxNearbyCylinders)
+    .map(({ feature }) => feature);
 }
 
 function getDayIndexFromDate(date) {
@@ -1849,7 +2629,8 @@ function getDayIndexFromDate(date) {
 
 
 function getCurrentCropMvtCylinderFeatures() {
-  const activeCode = cropCodeByKey[cropWaterActiveCrop.value] ?? 1;
+  if (!cropWaterActiveCrop.value) return [];
+  const activeCode = cropCodeByKey[cropWaterActiveCrop.value] ?? null;
 
   return currentMvtCropFeatures
     .filter((feature) => {
@@ -1874,64 +2655,50 @@ function getCurrentCropMvtCylinderFeatures() {
     }));
 }
 
-function getSummaryCylinderTotal() {
-  const summary = cropWaterSummaryData.value || {};
-  const key =
-    cropWaterActiveMetric.value === "blueWater"
-      ? "cumulative_blue_water_m3"
-      : cropWaterActiveMetric.value === "greenWater"
-        ? "cumulative_green_water_m3"
-        : cropWaterActiveMetric.value === "dailyWater" ? "daily_water_demand_m3" : "cumulative_water_demand_m3";
-  const value = Number(summary[key]);
+async function loadFieldDaily(fieldId, year, date) {
+  const key = `${year}:${date}:${fieldId}`;
+  if (fieldDailyCache.has(key)) return fieldDailyCache.get(key);
+  if (fieldDailyPendingCache.has(key)) return fieldDailyPendingCache.get(key);
 
-  return Number.isFinite(value) && value > 0 ? value : 0;
+  const request = fetch(
+    `${waterApiBase.replace(/\/$/, "")}/api/water/fields/${encodeURIComponent(fieldId)}/daily?year=${year}&date=${date}`
+  )
+    .then(async (response) => {
+      const payload = await response.json();
+      const row = response.ok && payload.available ? payload.data : null;
+      // 后端数据可能在页面打开后补齐。只缓存有效记录，避免一次 404
+      // 让该地块在当前日期内一直停留在“无数据”状态。
+      if (row) {
+        fieldDailyCache.set(key, row);
+        if (fieldDailyCache.size > 1200) fieldDailyCache.delete(fieldDailyCache.keys().next().value);
+      } else {
+        fieldDailyCache.delete(key);
+      }
+      return row;
+    })
+    .catch((error) => {
+      console.warn("单地块耗水请求失败", fieldId, error);
+      return null;
+    })
+    .finally(() => fieldDailyPendingCache.delete(key));
+
+  fieldDailyPendingCache.set(key, request);
+  return request;
 }
 
-function distributeCropTotalToCylinders(features) {
-  if (!features.length) return features;
-
-  const totalWater = getSummaryCylinderTotal();
-  if (totalWater <= 0) {
-    currentCylinderVisualMax = 8;
-    return features.map((feature) => ({
-      ...feature,
-      properties: { ...feature.properties, allocated_water_m3: 0 },
-    }));
-  }
-
-  const rawAreas = features.map((feature) =>
-    Math.max(getApproximateGeometryArea(feature), 1)
-  );
-  const sortedAreas = [...rawAreas].sort((a, b) => a - b);
-  const medianArea = getQuantile(sortedAreas, 0.5) || 1;
-  const minArea = medianArea * 0.25;
-  const maxArea = medianArea * 4;
-  const weights = features.map((feature, index) => {
-    const fieldId = getFeatureObjectId(feature, index);
-    const areaWeight = clamp(minArea, rawAreas[index], maxArea);
-    const seed = hashString(
-      `${cropWaterActiveCrop.value}:${cropWaterActiveDate.value}:${fieldId}`
-    );
-    const gentleVariation = 0.94 + seededRandom(seed) * 0.12;
-    return areaWeight * gentleVariation;
-  });
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
-  const allocations = weights.map((weight) => (totalWater * weight) / totalWeight);
-  const sortedAllocations = [...allocations].sort((a, b) => a - b);
-  currentCylinderVisualMax = Math.max(
-    getQuantile(sortedAllocations, 0.95) || Math.max(...allocations),
-    0.01
-  );
-
-  return features.map((feature, index) => ({
-    ...feature,
-    properties: {
-      ...feature.properties,
-      allocated_water_m3: allocations[index],
-      allocation_area_m2: rawAreas[index],
-      allocation_basis: "crop_daily_total_by_area",
-    },
-  }));
+function normalizeFieldDaily(row) {
+  return {
+    dailyWater: getNullableFiniteNumber(row?.total_eta_m3),
+    totalWater: getNullableFiniteNumber(row?.total_eta_m3),
+    blueWater: getNullableFiniteNumber(row?.blue_water_m3),
+    greenWater: getNullableFiniteNumber(row?.green_water_m3),
+    waterFootprint: getNullableFiniteNumber(row?.total_eta_m3),
+    irrigationWater: getNullableFiniteNumber(row?.irrigation_applied_m3),
+    dailyWaterMm: getNullableFiniteNumber(row?.total_eta_mm),
+    blueWaterMm: getNullableFiniteNumber(row?.blue_water_mm),
+    greenWaterMm: getNullableFiniteNumber(row?.green_water_mm),
+    areaM2: getNullableFiniteNumber(row?.field_area_m2),
+  };
 }
 
 function focusVisibleCylinderCluster(features) {
@@ -1951,17 +2718,71 @@ function focusVisibleCylinderCluster(features) {
     destination: getCropFocusDestination(extent),
     duration: 0.9,
     orientation: {
-      heading: Cesium.Math.toRadians(0),
-      pitch: Cesium.Math.toRadians(-62),
+      heading: Cesium.Math.toRadians(-8),
+      pitch: Cesium.Math.toRadians(-40),
       roll: 0,
     },
   });
+}
+
+async function updateCylinderLayerForDate() {
+  if (!viewer?.scene || !animatedCylinderItems.length || props.mode !== "crop") return;
+
+  const requestSeq = ++cylinderRequestSeq;
+  const year = getWaterSeasonYear(cropWaterActiveDate.value);
+  const date = cropWaterActiveDate.value;
+  const items = [...animatedCylinderItems];
+  const dailyRows = [];
+
+  for (let offset = 0; offset < items.length; offset += cylinderDataConcurrency) {
+    dailyRows.push(...await Promise.all(
+      items.slice(offset, offset + cylinderDataConcurrency).map((item) =>
+        loadFieldDaily(item.seed, year, date)
+      )
+    ));
+    if (requestSeq !== cylinderRequestSeq || isUnmounted || !viewer || !cropWaterShowCylinder.value) return;
+  }
+
+  const nextWaterDataMap = new Map();
+  items.forEach((item, index) => {
+    const row = dailyRows[index];
+    if (row) nextWaterDataMap.set(normalizeFeatureId(item.seed), normalizeFieldDaily(row));
+  });
+  currentWaterDataMap = nextWaterDataMap;
+
+  for (const item of items) {
+    const targetValue = getFeatureCylinderValue(item.feature, item.seed);
+    const targetHeight = getDemoCylinderHeightFromValue(targetValue);
+    const waterMixRatio = getFeatureGreenWaterRatio(item.feature, item.seed);
+    item.startHeight = item.currentHeight;
+    item.targetHeight = targetHeight;
+    item.startValue = item.currentValue;
+    item.targetValue = targetValue;
+    item.durationMs = getCylinderTransitionDuration(targetValue);
+    item.progress = 0;
+    item.hasStarted = false;
+    item.heightState.waterMixRatio = waterMixRatio;
+    item.primitive.appearance.material.uniforms.color = getColorByMetric(waterMixRatio);
+
+    const showGauge = Math.max(item.currentValue || 0, targetValue) > zeroValueThreshold;
+    item.shellPrimitive.show = showGauge;
+    for (const ring of item.gaugeRingEntities || []) ring.show = showGauge;
+  }
+
+  updateCylinderLabelRanks();
+  startCylinderTransitionAnimation();
 }
 
 async function addCylinderLayer() {
   if (!viewer || !viewer.scene) return;
 
   const requestSeq = ++cylinderRequestSeq;
+  const year = getWaterSeasonYear(cropWaterActiveDate.value);
+  const date = cropWaterActiveDate.value;
+  if (year !== loadedMvtYear || viewer.camera.positionCartographic.height > cylinderCameraHeightLimit) {
+    removeCylinderLayer();
+    return;
+  }
   await new Promise(resolve => setTimeout(resolve, 0));
   if (requestSeq !== cylinderRequestSeq || isUnmounted || !viewer || !cropWaterShowCylinder.value) return;
   const cameraRectangle = viewer.camera.computeViewRectangle();
@@ -1972,11 +2793,6 @@ async function addCylinderLayer() {
     await reloadVisibleMvtFields();
     allFeatures = getCurrentCropMvtCylinderFeatures();
   }
-  if (allFeatures.length > 1600) {
-    const step = Math.ceil(allFeatures.length / 1600);
-    allFeatures = allFeatures.filter((_, index) => index % step === 0);
-  }
-  currentWaterDataMap = new Map();
 
   if (
     requestSeq !== cylinderRequestSeq ||
@@ -2012,26 +2828,38 @@ async function addCylinderLayer() {
   }
 
   const uniqueVisibleFeatures = getUniqueCylinderFeatures(visibleFeatures);
-  const uniqueBboxFeatures = uniqueVisibleFeatures.length ? [] : getUniqueCylinderFeatures(allFeatures);
-  const cylinderFeatureSource = uniqueVisibleFeatures.length
-    ? uniqueVisibleFeatures
-    : uniqueBboxFeatures;
-  const animatedFeatures = distributeCropTotalToCylinders(
-    selectCylinderFeaturesForViewport(cylinderFeatureSource)
-  );
-  focusVisibleCylinderCluster(animatedFeatures);
-  console.info("[crop-water-map] parcel cylinder render candidates", {
+  const candidates = selectCylinderFeaturesForViewport(uniqueVisibleFeatures);
+  const dailyRows = [];
+  for (let offset = 0; offset < candidates.length; offset += cylinderDataConcurrency) {
+    dailyRows.push(...await Promise.all(candidates.slice(offset, offset + cylinderDataConcurrency).map((feature) =>
+      loadFieldDaily(getFeatureObjectId(feature), year, date)
+    )));
+    if (requestSeq !== cylinderRequestSeq || isUnmounted || !cropWaterShowCylinder.value) return;
+  }
+  currentWaterDataMap = new Map();
+  let availableDailyCount = 0;
+  candidates.forEach((feature, index) => {
+    const row = dailyRows[index];
+    if (!row) return;
+    const fieldId = getFeatureObjectId(feature);
+    currentWaterDataMap.set(fieldId, normalizeFieldDaily(row));
+    availableDailyCount += 1;
+  });
+  // 候选地块即使当前日期没有记录，也保留为零高度状态；后续日期
+  // 出现数据时可以直接从地面平滑升起，无需删除并重建水柱。
+  const animatedFeatures = candidates;
+  console.info("[crop-water-map] parcel cylinder render candidates", JSON.stringify({
     crop: cropWaterActiveCrop.value,
     date: cropWaterActiveDate.value,
     metric: cropWaterActiveMetric.value,
     apiFeatureCount: allFeatures.length,
     visibleFeatureCount: visibleFeatures.length,
     uniqueVisibleCount: uniqueVisibleFeatures.length,
-    uniqueFallbackCount: uniqueBboxFeatures.length,
+    availableDailyCount,
     animatedFeatureCount: animatedFeatures.length,
     firstFeature: animatedFeatures[0]?.properties,
     firstCenter: animatedFeatures[0] ? getFeatureCenter(animatedFeatures[0]) : null,
-  });
+  }));
   updateViewportCropFromFeatures(animatedFeatures);
 
   for (let i = 0; i < animatedFeatures.length; i++) {
@@ -2050,7 +2878,8 @@ async function addCylinderLayer() {
     const previousItem = previousCylinderItems.get(itemKey);
     const hasPreviousItem = !!previousItem;
     const shouldAnimateFromGround = shouldPlayEntryAnimation;
-    const radius = getFeatureCylinderRadius();
+    const gaugeRadius = getFeatureCylinderRadius();
+    const waterRadius = gaugeRadius * 0.7;
     const targetValue = getFeatureCylinderValue(feature, objectId);
     const waterMixRatio = getFeatureGreenWaterRatio(feature, objectId);
     const rawTargetHeight = getDemoCylinderHeightFromValue(targetValue);
@@ -2072,8 +2901,8 @@ async function addCylinderLayer() {
         geometryInstances: new Cesium.GeometryInstance({
           geometry: new Cesium.CylinderGeometry({
             length: demoMaxCylinderHeight,
-            topRadius: radius,
-            bottomRadius: radius,
+            topRadius: waterRadius,
+            bottomRadius: waterRadius,
             slices: animatedCylinderSlices,
             vertexFormat: Cesium.VertexFormat.POSITION_AND_ST,
           }),
@@ -2099,6 +2928,36 @@ async function addCylinderLayer() {
       targetValue > zeroValueThreshold &&
       (shouldAnimateFromGround ? targetHeight : previousHeight) > 1;
 
+    const shellPrimitive = viewer.scene.primitives.add(
+      new Cesium.Primitive({
+        geometryInstances: new Cesium.GeometryInstance({
+          geometry: new Cesium.CylinderGeometry({
+            length: demoMaxCylinderHeight,
+            topRadius: gaugeRadius,
+            bottomRadius: gaugeRadius,
+            slices: animatedCylinderSlices,
+            vertexFormat: Cesium.VertexFormat.POSITION_AND_ST,
+          }),
+        }),
+        modelMatrix: getCylinderModelMatrixForHeight(
+          baseMatrix,
+          demoMaxCylinderHeight,
+          demoMaxCylinderHeight
+        ),
+        appearance: new Cesium.MaterialAppearance({
+          translucent: true,
+          closed: false,
+          faceForward: true,
+          flat: true,
+          material: Cesium.Material.fromType("Color", {
+            color: Cesium.Color.fromCssColorString("#D9F4FF").withAlpha(0.24),
+          }),
+        }),
+        asynchronous: false,
+      })
+    );
+    shellPrimitive.show = targetValue > zeroValueThreshold;
+
     const pulseOffset = seededRandom(hashString(String(objectId))) * Math.PI * 2;
     const heightState = {
       value: shouldAnimateFromGround
@@ -2115,20 +2974,21 @@ async function addCylinderLayer() {
     };
     const topEntity = viewer.entities.add({
       name: `${getMetricLabel()} base`,
-      position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
-      show:
-        targetValue <= zeroValueThreshold ||
-        (targetValue > zeroValueThreshold && heightState.value > 1),
+      position: new Cesium.CallbackProperty(
+        () => Cesium.Cartesian3.fromDegrees(lon, lat, heightState.value),
+        false
+      ),
+      show: targetValue > zeroValueThreshold && heightState.value > 1,
       ellipse: {
         semiMajorAxis: new Cesium.CallbackProperty(
-          () => radius,
+          () => waterRadius,
           false
         ),
         semiMinorAxis: new Cesium.CallbackProperty(
-          () => radius,
+          () => waterRadius,
           false
         ),
-        height: 1.2,
+        height: 0,
         heightReference: Cesium.HeightReference.NONE,
         material: new Cesium.ColorMaterialProperty(
           new Cesium.CallbackProperty(
@@ -2138,7 +2998,7 @@ async function addCylinderLayer() {
         ),
         outline: true,
         outlineColor: new Cesium.CallbackProperty(
-          () => getColorByMetric(heightState?.waterMixRatio).withAlpha(0.44),
+          () => Cesium.Color.WHITE.withAlpha(0.82),
           false
         ),
       },
@@ -2150,11 +3010,11 @@ async function addCylinderLayer() {
       show: heightState.showGlow,
       ellipse: {
         semiMajorAxis: new Cesium.CallbackProperty(
-          () => radius,
+          () => gaugeRadius * 1.08,
           false
         ),
         semiMinorAxis: new Cesium.CallbackProperty(
-          () => radius,
+          () => gaugeRadius * 1.08,
           false
         ),
         height: 1.6,
@@ -2165,9 +3025,29 @@ async function addCylinderLayer() {
             false
           )
         ),
-        outline: false,
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString("#D9F4FF").withAlpha(0.68),
       },
     });
+
+    const gaugeRingEntities = [0.25, 0.5, 0.75, 1].map((ratio) =>
+      viewer.entities.add({
+        name: `${getMetricLabel()} gauge tick`,
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+        show: targetValue > zeroValueThreshold,
+        ellipse: {
+          semiMajorAxis: gaugeRadius * 1.03,
+          semiMinorAxis: gaugeRadius * 1.03,
+          height: demoMaxCylinderHeight * ratio,
+          material: Cesium.Color.TRANSPARENT,
+          outline: true,
+          outlineColor: Cesium.Color.fromCssColorString("#D9F4FF").withAlpha(
+            ratio === 1 ? 0.92 : 0.56
+          ),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9000),
+        },
+      })
+    );
 
     const labelState = { item: null };
     const labelEntity = viewer.entities.add({
@@ -2196,6 +3076,7 @@ async function addCylinderLayer() {
 
     const item = {
       primitive,
+      shellPrimitive,
       topEntity,
       glowEntity,
       labelEntity,
@@ -2223,6 +3104,7 @@ async function addCylinderLayer() {
       lon,
       lat,
       heightState,
+      gaugeRingEntities,
       durationMs: getCylinderTransitionDuration(targetValue),
       progress: shouldAnimateCylinder ? 0 : 1,
       hasStarted: !shouldAnimateCylinder,
@@ -2231,19 +3113,30 @@ async function addCylinderLayer() {
     labelState.item = item;
     animatedCylinderItems.push(item);
     cylinderEntities.push(primitive);
+    cylinderEntities.push(shellPrimitive);
     cylinderEntities.push(topEntity);
     cylinderEntities.push(glowEntity);
     cylinderEntities.push(labelEntity);
+    cylinderEntities.push(...gaugeRingEntities);
   }
 
   hasInitializedCylinderLayer = true;
   updateCylinderLabelRanks();
+  startCylinderTransitionAnimation();
+}
+
+function startCylinderTransitionAnimation() {
+  if (!viewer?.scene) return;
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
   let lastAnimationTime = performance.now();
   let lastLabelLayoutTime = 0;
 
   function animate() {
-    if (!viewer || !viewer.scene) return;
+    if (!viewer?.scene) {
+      animationFrameId = null;
+      return;
+    }
 
     const now = performance.now();
     const frameDelta = Math.min(now - lastAnimationTime, 34);
@@ -2251,14 +3144,8 @@ async function addCylinderLayer() {
     let hasAnimatingItem = false;
 
     for (const item of animatedCylinderItems) {
-      if (!item.hasStarted) {
-        item.hasStarted = true;
-      }
-
-      item.progress = Math.min(
-        item.progress + frameDelta / item.durationMs,
-        1
-      );
+      if (!item.hasStarted) item.hasStarted = true;
+      item.progress = Math.min(item.progress + frameDelta / item.durationMs, 1);
 
       const easedProgress = easeInOutSine(item.progress);
       item.currentHeight = lerp(item.startHeight, item.targetHeight, easedProgress);
@@ -2273,20 +3160,20 @@ async function addCylinderLayer() {
       item.heightState.showLabel = shouldShowCylinderLabel(item);
       item.labelEntity.show = item.heightState.showLabel;
       const shouldShowCylinder = shouldShowCylinderBody(item);
+      const shouldShowGauge = Math.max(item.currentValue || 0, item.targetValue || 0) > zeroValueThreshold;
       item.heightState.showGlow = shouldShowCylinder;
       item.glowEntity.show = shouldShowCylinder;
       item.primitive.show = shouldShowCylinder;
+      item.shellPrimitive.show = shouldShowGauge;
+      for (const ring of item.gaugeRingEntities || []) ring.show = shouldShowGauge;
       item.topEntity.show = shouldShowCylinderDisk(item);
 
-      if (item.progress < 1) {
-        hasAnimatingItem = true;
-      }
+      if (item.progress < 1) hasAnimatingItem = true;
     }
 
     if (now - lastLabelLayoutTime > 260) {
       lastLabelLayoutTime = now;
       updateCylinderLabelRanks();
-
       for (const item of animatedCylinderItems) {
         item.heightState.showLabel = shouldShowCylinderLabel(item);
         item.labelEntity.show = item.heightState.showLabel;
@@ -2294,12 +3181,8 @@ async function addCylinderLayer() {
     }
 
     viewer.scene.requestRender();
-
-    if (hasAnimatingItem) {
-      animationFrameId = requestAnimationFrame(animate);
-    } else {
-      animationFrameId = null;
-    }
+    if (hasAnimatingItem) animationFrameId = requestAnimationFrame(animate);
+    else animationFrameId = null;
   }
 
   animate();
@@ -2588,7 +3471,7 @@ function resetCropWaterLayerDisplay() {
   const activeCropName = cropWaterActiveCrop.value;
 
   for (const item of cropWaterImageryLayers) {
-    item.imageryLayer.show = item.crop === activeCropName;
+    item.imageryLayer.show = Boolean(activeCropName) && item.crop === activeCropName;
     item.imageryLayer.alpha = 0.9;
     item.imageryLayer.brightness = 1;
     item.imageryLayer.contrast = 1.05;
@@ -3032,19 +3915,13 @@ function toScreenPosition(worldPosition) {
 }
 
 function getFeatureCylinderValue(feature, objectId) {
-  const allocatedValue = getNullableFiniteNumber(
-    feature.properties?.allocated_water_m3
-  );
-  if (Number.isFinite(allocatedValue)) {
-    return allocatedValue;
-  }
-
   const waterMatch = findWaterDataByObjectIds(
     [
       objectId,
       feature.properties?.OBJECTID,
       feature.properties?.objectid,
       feature.properties?.field_id,
+      feature.properties?.gid,
       feature.properties?.FID_1,
       feature.properties?.FID,
     ]
@@ -3057,36 +3934,13 @@ function getFeatureCylinderValue(feature, objectId) {
     return apiValue;
   }
 
-  const featureValue = getMetricValueFromWaterData(feature.properties);
-
-  if (Number.isFinite(featureValue)) {
-    return featureValue;
-  }
-
   return 0;
 }
 
 function getMetricValueFromWaterData(waterData) {
   if (!waterData) return undefined;
 
-  if (cropWaterActiveMetric.value === "waterFootprint") {
-    return toFiniteNumber(
-      waterData.eta ??
-        waterData.eta_mm ??
-        waterData.dailyWater ??
-        waterData.totalWater
-    );
-  }
-
-  if (cropWaterActiveMetric.value === "blueWater") {
-    return toFiniteNumber(waterData.blueWater ?? waterData.blue_water_mm);
-  }
-
-  if (cropWaterActiveMetric.value === "greenWater") {
-    return toFiniteNumber(waterData.greenWater ?? waterData.green_water_mm);
-  }
-
-  return toFiniteNumber(waterData[cropWaterActiveMetric.value]);
+  return toFiniteNumber(waterData.dailyWaterMm);
 }
 
 
@@ -3113,8 +3967,8 @@ function seededRandom(seed) {
 }
 
 function getColorByMetric(greenWaterRatio = 0.5) {
-  const blue = new Cesium.Color(42 / 255, 135 / 255, 235 / 255, 0.64);
-  const green = new Cesium.Color(42 / 255, 196 / 255, 112 / 255, 0.64);
+  const blue = new Cesium.Color(35 / 255, 157 / 255, 245 / 255, 0.86);
+  const green = new Cesium.Color(39 / 255, 213 / 255, 148 / 255, 0.86);
 
   if (cropWaterActiveMetric.value === "greenWater") {
     return green;
@@ -3131,10 +3985,10 @@ function getColorByMetric(greenWaterRatio = 0.5) {
     cropWaterActiveMetric.value === "waterFootprint" ||
     cropWaterActiveMetric.value === "totalWater"
   ) {
-    return mixCesiumColor(blue, green, amplifyMixRatio(greenWaterRatio)).withAlpha(0.68);
+    return mixCesiumColor(blue, green, amplifyMixRatio(greenWaterRatio)).withAlpha(0.88);
   }
 
-  return mixCesiumColor(blue, green, 0.5).withAlpha(0.64);
+  return mixCesiumColor(blue, green, 0.5).withAlpha(0.86);
 }
 
 function amplifyMixRatio(ratio) {
@@ -3175,7 +4029,7 @@ function getFeatureGreenWaterRatio(feature, objectId) {
     return green / total;
   }
 
-  return getFallbackGreenWaterRatio(feature, objectId);
+  return 0.5;
 }
 
 function getFallbackGreenWaterRatio(feature, objectId) {
@@ -3214,14 +4068,14 @@ function mixCesiumColor(fromColor, toColor, ratio) {
 
 function getTopSurfaceColor(heightState) {
   const pulse = getPulseValue(heightState);
-  const alpha = heightState?.showGlow ? 0.18 + pulse * 0.08 : 0.12;
+  const alpha = heightState?.showGlow ? 0.78 + pulse * 0.12 : 0.68;
 
   return getColorByMetric(heightState?.waterMixRatio).withAlpha(alpha);
 }
 
 function getTopGlowColor(heightState) {
   const pulse = getPulseValue(heightState);
-  const alpha = heightState?.showGlow ? 0.04 + pulse * 0.06 : 0;
+  const alpha = heightState?.showGlow ? 0.09 + pulse * 0.08 : 0;
 
   return getColorByMetric(heightState?.waterMixRatio).withAlpha(alpha);
 }
@@ -3239,7 +4093,7 @@ function formatMetricLabelValue(value) {
   const number = Number(value);
   const formattedValue = Number.isFinite(number) ? number.toFixed(2) : "--";
 
-  return `${formattedValue} m³`;
+  return `${formattedValue} mm`;
 }
 
 function formatVisibleMetricLabelValue(value) {
@@ -3261,11 +4115,11 @@ function shouldPrintMetricLabelValue(value) {
 function getMetricLabel() {
   const labels = {
     dailyWater: "当日总需水量",
-    totalWater: "累计总需水量",
-    blueWater: "累计蓝水耗水量",
-    greenWater: "累计绿水耗水量",
-    waterFootprint: "累计总需水量",
-    irrigationWater: "灌溉用水量",
+    totalWater: "当日总耗水量",
+    blueWater: "当日蓝水耗水量",
+    greenWater: "当日绿水耗水量",
+    waterFootprint: "当日总耗水量",
+    irrigationWater: "当日灌溉用水量",
   };
 
   return labels[cropWaterActiveMetric.value] || "作物需水量";
@@ -3276,11 +4130,15 @@ function getFeatureCrop(feature) {
   const cropFromLayer = activeCropWaterDisplayLayers.find(
     (layer) => layer.name === sourceLayer
   )?.crop;
+  const cropCode = Number(
+    feature?.properties?.max_value ?? feature?.properties?.crop_code
+  );
 
   return (
     cropFromLayer ||
     feature?.properties?.crop ||
     feature?.properties?.crop_type ||
+    cropKeyByCode[cropCode] ||
     cropWaterActiveCrop.value
   );
 }
@@ -3290,6 +4148,7 @@ function getFeatureObjectId(feature, fallbackIndex = 0) {
     feature.properties?.OBJECTID ??
       feature.properties?.objectid ??
       feature.properties?.field_id ??
+      feature.properties?.gid ??
       feature.properties?.FID_1 ??
       feature.properties?.FID ??
       fallbackIndex + 1

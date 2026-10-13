@@ -44,12 +44,13 @@ export function normalizeAnnualData(payload) {
 }
 
 export function normalizeChangeData(payload) {
+  const envelope = payload?.data?.data ? payload.data : payload
   const row = unwrapApiData(payload)
   if (!row || typeof row !== 'object') return null
   const stats = row.stats ?? row.summary ?? row
-  const rising = pickNumber(stats, 'rising', 'rising_count', 'risingCount')
-  const falling = pickNumber(stats, 'falling', 'falling_count', 'fallingCount')
-  const stable = pickNumber(stats, 'stable', 'stable_count', 'stableCount')
+  const rising = pickNumber(stats, 'increase_field_count', 'rising', 'increase', 'increased', 'rising_count', 'risingCount', 'increase_count', 'increaseCount', 'increased_count', 'increasedCount', 'up_count', 'upCount')
+  const falling = pickNumber(stats, 'decrease_field_count', 'falling', 'decrease', 'decreased', 'falling_count', 'fallingCount', 'decrease_count', 'decreaseCount', 'decreased_count', 'decreasedCount', 'down_count', 'downCount')
+  const stable = pickNumber(stats, 'unchanged_field_count', 'stable', 'unchanged', 'unchanged_count', 'stable_count', 'stableCount', 'unchangedCount', 'same_count', 'sameCount')
   if ([rising, falling, stable].some(value => value === null)) return null
   const total = Math.max(rising + falling + stable, 1)
   let historyRows = []
@@ -68,6 +69,18 @@ export function normalizeChangeData(payload) {
     falling,
     fallingRate: Number((pickNumber(stats, 'fallingRate', 'falling_rate') ?? falling / total * 100).toFixed(1)),
     stable,
-    stableRate: Number((pickNumber(stats, 'stableRate', 'stable_rate') ?? stable / total * 100).toFixed(1))
+    stableRate: Number((pickNumber(stats, 'stableRate', 'stable_rate') ?? stable / total * 100).toFixed(1)),
+    researchFieldCount: pickNumber(row, 'research_field_count', 'researchFieldCount'),
+    currentFieldCount: pickNumber(row, 'current_field_count', 'currentFieldCount'),
+    previousFieldCount: pickNumber(row, 'previous_field_count', 'previousFieldCount'),
+    comparableFieldCount: pickNumber(row, 'comparable_field_count', 'comparableFieldCount') ?? rising + falling + stable,
+    currentTotal: pickNumber(row, 'current_total_m3', 'current_total', 'current_total_eta_m3', 'currentTotal', 'current_value_total', 'currentValueTotal'),
+    previousTotal: pickNumber(row, 'previous_total_m3', 'previous_total', 'previous_total_eta_m3', 'previousTotal', 'previous_value_total', 'previousValueTotal'),
+    deltaTotal: pickNumber(row, 'delta_total', 'delta_total_eta_m3', 'delta_m3', 'deltaTotal', 'total_delta', 'totalDelta'),
+    averageDelta: pickNumber(row, 'average_delta_m3', 'averageDeltaM3'),
+    deltaRate: pickNumber(row, 'delta_rate', 'deltaRate'),
+    previousDate: row.previous_date ?? row.previousDate ?? envelope?.previous_date ?? envelope?.previousDate ?? null,
+    previousMonth: row.previous_month ?? row.previousMonth ?? envelope?.previous_month ?? envelope?.previousMonth ?? null,
+    scope: (row.data_scope ?? envelope?.data_scope) === 'research_region' ? '全研究区' : '全研究区'
   }
 }

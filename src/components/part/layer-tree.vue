@@ -18,17 +18,19 @@
         <input
           type="checkbox"
           :checked="temporalPointerEnabled"
+          title="开启后，悬停地图要素可查看名称、位置和属性"
           @change="store.setTemporalPointerEnabled($event.target.checked)"
         >
       </label>
       <div v-for="group in tree" :key="group.id" class="tree-group">
-        <label class="tree-row is-group">
-          <input
+        <div class="tree-row is-group">
+          <input v-if="group.id !== 'imagery'"
             type="checkbox"
             :checked="groupState(group) === 'all'"
             :indeterminate.prop="groupState(group) === 'some'"
             @change="toggleGroup(group, $event.target.checked)"
           >
+          <span v-else class="tree-checkbox-placeholder" aria-hidden="true"></span>
           <button
             class="tree-caret"
             type="button"
@@ -36,7 +38,11 @@
             @click.prevent="open[group.id] = open[group.id] === false"
           >{{ open[group.id] === false ? '›' : '⌄' }}</button>
           <span class="tree-name">{{ group.label }}</span>
-        </label>
+          <label v-if="group.id === 'imagery'" class="monthly-toggle" @click.stop>
+            <input type="checkbox" :checked="temporalImageMonthly" @change="store.setTemporalImageMonthly($event.target.checked)">
+            <span>月度数据</span>
+          </label>
+        </div>
 
         <div v-show="open[group.id] !== false" class="tree-children">
           <div v-for="child in group.children" :key="child.id" class="tree-child">
@@ -67,7 +73,7 @@ import PiIcon from '@/components/part/pi-icon.vue'
 import { usePanelDrag } from '@/composables/usePanelDrag'
 
 const store = useMapStore()
-const { temporalLayerInstances, temporalLayerEnabled, temporalLayerStatus, temporalPointerEnabled } = storeToRefs(store)
+const { temporalLayerInstances, temporalLayerEnabled, temporalLayerStatus, temporalPointerEnabled, temporalImageMonthly } = storeToRefs(store)
 
 const collapsed = ref(false)
 const { panel, panelStyle, startDrag } = usePanelDrag()
@@ -118,7 +124,7 @@ const tree = [
     label: '气象',
     children: [
       { id: 'temperature', label: '气温' },
-      { id: 'precipitation', label: '降水' }
+      { id: 'precipitation', label: '降水（年累计）' }
     ]
   }
 ]
@@ -128,8 +134,8 @@ const DEFAULT_ON = []
 const LEGENDS = {
   elevation: { colors:['#205b35','#72a34d','#d6c785','#a17a55','#dddddd','#ffffff'], min:'0 m', max:'5000+ m' },
   slope: { colors:['#ffffcc','#c2e699','#78c679','#31a354','#006837','#004529'], min:'0°', max:'45°+' },
-  temperature: { colors:['#313695','#74add1','#ffffbf','#f46d43','#a50026'], min:'−10°C', max:'30°C' },
-  precipitation: { colors:['#ffffd9','#edf8b1','#7fcdbb','#41b6c4','#225ea8','#081d58'], min:'0 mm', max:'1500 mm' }
+  temperature: { colors:['#313695','#74add1','#ffffbf','#f46d43','#a50026'], min:'−40°C', max:'40°C' },
+  precipitation: { colors:['#ffffd9 0%','#edf8b1 6.67%','#7fcdbb 20%','#41b6c4 40%','#225ea8 66.67%','#081d58 100%'], min:'0 mm/year', max:'1500+ mm/year' }
 }
 
 const isOn = id => !!temporalLayerEnabled.value[id]
@@ -247,6 +253,10 @@ defineExpose({ applyDefaults })
   color: var(--ink-700);
   font-weight: 600;
 }
+
+.tree-checkbox-placeholder { flex:0 0 14px; width:14px; height:14px; }
+.monthly-toggle { display:flex; align-items:center; gap:4px; margin-left:auto; color:var(--ink-700); font-size:11px; font-weight:400; white-space:nowrap; cursor:pointer; }
+.monthly-toggle input { width:13px; height:13px; margin:0; accent-color:var(--brand-500); cursor:pointer; }
 
 .tree-row input[type='checkbox'] {
   width: 14px;

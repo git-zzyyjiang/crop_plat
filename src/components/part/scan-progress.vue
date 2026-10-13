@@ -1,6 +1,6 @@
 <template>
   <div v-if="visible" class="scan-progress" role="status" aria-live="polite">
-    <div class="scan-progress-track" role="progressbar" aria-label="地块识别进度" :aria-valuenow="controlled && !waiting ? Math.round(progress) : undefined" :aria-valuemin="0" :aria-valuemax="100">
+    <div class="scan-progress-track" role="progressbar" :aria-label="isParcel ? '地块识别进度' : '作物识别进度'" :aria-valuenow="controlled && !waiting ? Math.round(progress) : undefined" :aria-valuemin="0" :aria-valuemax="100">
       <div class="scan-progress-fill" :class="{ done, controlled, waiting }" :style="controlled && !waiting ? {width: progress + '%'} : null"></div>
     </div>
     <span>{{ statusText }}</span>
@@ -34,8 +34,8 @@ const statusText = computed(() => {
     if(animationPhase.value === 'preparing') return '渲染图层中…'
     return waiting.value ? '正在识别… · 加载作物地块' : '正在识别… · 逐块识别作物类型'
   }
-  const stage = {loading:'加载地块',points:'显示边界点',lines:'连接边界线',faces:'生成地块面'}[parcelIdentifyPhase.value]
-  return `正在识别…${stage ? ' · '+stage : ''}`
+  const stage = {loading:'加载地块',points:'识别边界点',lines:'识别边界连线',faces:'识别地块面'}[parcelIdentifyPhase.value]
+  return `正在识别中…${stage ? ' · '+stage : ''}`
 })
 
 watch(() => controlled.value ? animationPhase.value : cropAnalysisLoading.value, state => {

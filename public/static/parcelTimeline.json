@@ -1,0 +1,20 @@
+{
+  "defaultYear": 2024,
+  "dates": [
+    { "date": "2024-01-01", "layer": "agri-agent:beksh_parcel_2024" },
+    { "date": "2025-01-01", "layer": "agri-agent:beksh_parcel_2025" },
+    { "date": "2026-01-01", "layer": "agri-agent:beksh_parcel_2026" }
+  ],
+  "source": {
+    "type": "wms",
+    "dataVersion": "optimized-20261011",
+    "displayMode": "roi",
+    "workspace": "agri-agent",
+    "tileCacheUrl": "/geoserver/gwc/service/wms",
+    "tileCacheStyles": "",
+    "styles": "red-polygon",
+    "version": "1.1.1",
+    "projection": "EPSG:4326",
+    "zIndex": 50
+  }
+}

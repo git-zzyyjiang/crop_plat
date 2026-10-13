@@ -3,6 +3,10 @@ Thumbs.db
 Desktop.ini
 node_modules
 /dist
+integration-backup-*/
+video_frames/
+*.bak
+*.tmp
 .eslintcache
 *.tsbuildinfo
 

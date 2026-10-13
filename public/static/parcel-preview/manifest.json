@@ -1,0 +1,20 @@
+{
+  "2024": {
+    "layer": "agri-agent:beksh_parcel_2024",
+    "points": 354399,
+    "sourceSha256": "fc6cd74c2bd6dec71e6da4ca81b21843fef879f17e54cdec41dc5702700e8692",
+    "encoding": "little-endian float32 longitude,latitude"
+  },
+  "2025": {
+    "layer": "agri-agent:beksh_parcel_2025",
+    "points": 371510,
+    "sourceSha256": "8386daa1d8eb069144c6b3e56e1e426b50eaa4febe5ac1e74c34f4cced2c7e1d",
+    "encoding": "little-endian float32 longitude,latitude"
+  },
+  "2026": {
+    "layer": "agri-agent:beksh_parcel_2026",
+    "points": 373478,
+    "sourceSha256": "154932b4f10ca30fe5b904d14035aa50a69f3fafb7990f9e9b8a016ecdce7683",
+    "encoding": "little-endian float32 longitude,latitude"
+  }
+}

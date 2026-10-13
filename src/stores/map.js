@@ -38,7 +38,7 @@ import TileLayer from 'ol/layer/Tile';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { fromArrayBuffer } from 'geotiff';
-import { sampleParcelMarkers, loadParcelAnimationFeatures, parcelSweepProgress } from '@/utils/parcel-animation';
+import { loadParcelAnimationFeatures, prepareParcelPaths, traceParcelPaths, getParcelAnimationTiming } from '@/utils/parcel-animation';
 import { fetchRecognitionFeatures } from '@/utils/recognition-data';
 import {
     CROP_TYPES, CROP_YEARS, CROP_STYLE_NAME, CROP_STATS_URL, CROP_TEMPORAL_STATS_URL,
@@ -49,6 +49,8 @@ import {
     cropLayerName, cropTypeName, cropFilterExpression,
     rotationFilterExpression, stabilityFilterExpression
 } from '@/utils/crop-types';
+import { loadFastParcelFeatures } from '@/utils/parcel-fast';
+import { loadParcelPreviewPoints } from '@/utils/parcel-preview';
 
 
 
@@ -136,12 +138,358 @@ const readFeatureProperty = (properties, name) => {
 const temporalRasterCache = new Map()
 const temporalRasterPromises = new Map()
 const TEMPORAL_RASTER_EXTENT = [68, 40, 88, 50]
-const TEMPORAL_WEATHER_EXTENT = [67.875, 39.875, 88.125, 50.125]
+const TEMPORAL_DAILY_START = '2024-01-01'
+const TEMPORAL_BASIN_BBOX = [72.48, 42.25, 85.01, 49.14]
+const TEMPORAL_ANNUAL_PRECIPITATION_GRID = {west:68, south:40, east:88, north:50, step:0.25}
+const temporalImageSearchCache = new Map()
+const temporalImageCatalogCache = new Map()
+const temporalDailyMosaicCache = new Map()
+let temporalDailyTemperatureMetadataPromise = null
+const temporalDailyTemperatureYearCache = new Map()
+const temporalAnnualPrecipitationCache = new Map()
+const temporalTilePreloadCache = new Map()
+const temporalPreparedTemperatureImages = new Map()
+const temporalDatePreloadTasks = new Map()
+
+function preloadImageUrl(url){
+    if(!url || temporalTilePreloadCache.has(url)) return temporalTilePreloadCache.get(url) || Promise.resolve(false)
+    const promise = new Promise(resolve => {
+        const image = new Image()
+        let settled = false
+        const finish = loaded => {
+            if(settled) return
+            settled = true
+            image.onload = null
+            image.onerror = null
+            resolve(loaded)
+        }
+        image.crossOrigin = 'anonymous'
+        image.onload = () => finish(true)
+        image.onerror = () => finish(false)
+        image.src = url
+        window.setTimeout(() => finish(false), 12000)
+    })
+    temporalTilePreloadCache.set(url, promise)
+    promise.then(loaded => {
+        if(!loaded) temporalTilePreloadCache.delete(url)
+        while(temporalTilePreloadCache.size > 96) temporalTilePreloadCache.delete(temporalTilePreloadCache.keys().next().value)
+    })
+    return promise
+}
+
+function preloadVisibleSourceTiles(source, map){
+    const view = map?.getView?.(), size = map?.getSize?.()
+    if(!source?.getTileGridForProjection || !source.getTileUrlFunction || !view || !size?.[0] || !size?.[1]) return Promise.resolve(false)
+    const projection = view.getProjection()
+    const grid = source.getTileGridForProjection(projection)
+    if(!grid) return Promise.resolve(false)
+    const minZoom = source.getMinZoom?.() ?? 0
+    const maxZoom = source.getMaxZoom?.() ?? 22
+    const zoom = Math.max(minZoom, Math.min(maxZoom, Math.round(view.getZoom() || minZoom)))
+    const range = grid.getTileRangeForExtentAndZ(view.calculateExtent(size), zoom)
+    const center = grid.getTileCoordForCoordAndZ(view.getCenter(), zoom)
+    const tiles = []
+    for(let x=range.minX; x<=range.maxX; x++) for(let y=range.minY; y<=range.maxY; y++) tiles.push([zoom,x,y])
+    tiles.sort((a,b)=>(a[1]-center[1])**2+(a[2]-center[2])**2-((b[1]-center[1])**2+(b[2]-center[2])**2))
+    const urlFunction = source.getTileUrlFunction()
+    const urls = tiles.slice(0,16).map(coord => urlFunction(coord, 1, projection)).filter(Boolean)
+    if(!urls.length) return Promise.resolve(false)
+    return Promise.all(urls.map(preloadImageUrl)).then(results => results.every(Boolean))
+}
+
+function watchTileBatch(source, onReady, onError){
+    let pending = 0, loaded = 0, settleTimer = null
+    const settle = () => {
+        if(pending > 0) return
+        if(settleTimer) clearTimeout(settleTimer)
+        if(loaded){
+            settleTimer = setTimeout(onReady, 180)
+        } else {
+            onError()
+        }
+    }
+    source.on('tileloadstart', () => {
+        pending++
+        if(settleTimer) clearTimeout(settleTimer)
+    })
+    source.on('tileloadend', () => {
+        pending = Math.max(0, pending-1)
+        loaded++
+        settle()
+    })
+    source.on('tileloaderror', () => {
+        pending = Math.max(0, pending-1)
+        settle()
+    })
+}
+
+const shiftIsoDate = (value, days) => {
+    const date = new Date(`${value}T00:00:00Z`)
+    date.setUTCDate(date.getUTCDate() + days)
+    return date.toISOString().slice(0, 10)
+}
+
+async function getNearestSentinelMosaic(sensor, requestedDate, monthly=false){
+    const cacheKey = `${sensor}:${monthly ? 'monthly' : 'daily'}:${requestedDate}`
+    if(temporalImageSearchCache.has(cacheKey)) return temporalImageSearchCache.get(cacheKey)
+    const promise = (async () => {
+        const collection = sensor === 'sentinel1' ? 'sentinel-1-rtc' : 'sentinel-2-l2a'
+        const windowDays = sensor === 'sentinel1' ? 6 : 10
+        const monthStart = `${requestedDate.slice(0,7)}-01`
+        const nextMonth = new Date(`${monthStart}T00:00:00Z`)
+        nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1)
+        const monthEnd = shiftIsoDate(nextMonth.toISOString().slice(0,10), -1)
+        const windowStart = monthly ? monthStart : shiftIsoDate(requestedDate, -windowDays)
+        const windowEnd = monthly ? monthEnd : shiftIsoDate(requestedDate, windowDays)
+        const bucketKey = `${sensor}:${monthly ? 'monthly' : 'daily'}:${windowStart}:${windowEnd}`
+        let catalogPromise = temporalImageCatalogCache.get(bucketKey)
+        if(!catalogPromise){
+            const query = {
+                collections:[collection],
+                bbox:TEMPORAL_BASIN_BBOX,
+                datetime:`${windowStart}T00:00:00Z/${windowEnd}T23:59:59Z`,
+                limit:1000,
+                sortby:[{field:'datetime', direction:'asc'}]
+            }
+            if(sensor === 'sentinel2') query.query = {'eo:cloud_cover':{lt:80}}
+            catalogPromise = axios.post('https://planetarycomputer.microsoft.com/api/stac/v1/search', query).then(catalog => {
+                const byDate = new Map()
+                ;(catalog.data.features || []).forEach(item => {
+                    const date = item.properties?.datetime?.slice(0,10)
+                    if(date) byDate.set(date, (byDate.get(date) || 0) + 1)
+                })
+                return byDate
+            })
+            temporalImageCatalogCache.set(bucketKey, catalogPromise)
+            catalogPromise.catch(() => temporalImageCatalogCache.delete(bucketKey))
+        }
+        const byDate = await catalogPromise
+        const candidates = [...byDate.entries()].sort((a,b) => a[0].localeCompare(b[0]))
+        if(!candidates.length) throw new Error('所选日期附近暂无 Sentinel 影像')
+        const dateStart = candidates[0][0]
+        const dateEnd = candidates[candidates.length - 1][0]
+        const mosaicKey = `${sensor}:${monthly ? 'monthly' : 'daily'}:${dateStart}:${dateEnd}`
+        let mosaicPromise = temporalDailyMosaicCache.get(mosaicKey)
+        if(!mosaicPromise){
+            mosaicPromise = (async () => {
+                const dailySearch = {
+                    collections:[collection],
+                    bbox:TEMPORAL_BASIN_BBOX,
+                    datetime:`${dateStart}T00:00:00Z/${dateEnd}T23:59:59Z`,
+                    limit:1000,
+                    sortby:[{field:'datetime', direction:'asc'}]
+                }
+                if(sensor === 'sentinel2') dailySearch.query = {'eo:cloud_cover':{lt:80}}
+                const registered = await axios.post('https://planetarycomputer.microsoft.com/api/data/v1/mosaic/register', dailySearch)
+                const searchId = registered.data.searchid
+                if(!searchId) throw new Error('影像服务未返回拼接影像编号')
+                const render = sensor === 'sentinel1'
+                    ? 'assets=vv&rescale=0,0.3&nodata=0&return_mask=true&colormap_name=gray&tile_format=png&items_limit=500&time_limit=15'
+                    : 'assets=B04&assets=B03&assets=B02&rescale=0,3000&nodata=0&tile_format=png'
+                return {url:`https://planetarycomputer.microsoft.com/api/data/v1/mosaic/tiles/${searchId}/WebMercatorQuad/{z}/{x}/{y}@1x?${render}&collection=${collection}`}
+            })()
+            temporalDailyMosaicCache.set(mosaicKey, mosaicPromise)
+            mosaicPromise.catch(() => temporalDailyMosaicCache.delete(mosaicKey))
+        }
+        return {...await mosaicPromise, dateStart, dateEnd}
+    })()
+    temporalImageSearchCache.set(cacheKey, promise)
+    try { return await promise } catch(error) { temporalImageSearchCache.delete(cacheKey); throw error }
+}
+
+async function fetchDailyTemperature(date){
+    if(!temporalDailyTemperatureMetadataPromise){
+        temporalDailyTemperatureMetadataPromise = axios.get('/data/temporal/05_weather/daily_temperature/temperature_daily_static.json')
+            .then(response => response.data)
+            .catch(error => { temporalDailyTemperatureMetadataPromise = null; throw error })
+    }
+    const metadata = await temporalDailyTemperatureMetadataPromise
+    const year = Number(date.slice(0,4))
+    const fileInfo = metadata.files?.find(file => file.year === year)
+    if(!fileInfo || date < fileInfo.period_start || date > fileInfo.period_end){
+        throw new Error(`缺少 ${date} 的每日气温数据`)
+    }
+    let dataPromise = temporalDailyTemperatureYearCache.get(year)
+    if(!dataPromise){
+        dataPromise = fetch(`/data/temporal/05_weather/daily_temperature/${fileInfo.file}`).then(async response => {
+            if(!response.ok) throw new Error(`无法读取 ${fileInfo.file}`)
+            const buffer = await response.arrayBuffer()
+            if(buffer.byteLength !== fileInfo.size_bytes) throw new Error(`${fileInfo.file} 文件大小与元数据不符`)
+            return buffer
+        })
+        temporalDailyTemperatureYearCache.set(year, dataPromise)
+        dataPromise.catch(() => temporalDailyTemperatureYearCache.delete(year))
+    }
+    const buffer = await dataPromise
+    const dayIndex = Math.floor((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${fileInfo.period_start}T00:00:00Z`)) / 86400000)
+    const {width,height,longitude,latitude,cell_edge_extent:extent} = metadata.grid
+    const cellCount = width*height
+    const view = new DataView(buffer,dayIndex*cellCount*4,cellCount*4)
+    const values = new Array(cellCount)
+    for(let index=0;index<cellCount;index++){
+        const value=view.getFloat32(index*4,true)
+        values[index]=Number.isFinite(value) ? value : null
+    }
+    return {
+        metadata,
+        fileInfo,
+        grid:{xCoordinates:longitude,yCoordinates:latitude,values,width,height,extent}
+    }
+}
+
+function weatherColorChannels(id, value){
+    if(id === 'temperature'){
+        const stops = [-40,-20,0,20,40]
+        const colors = ['#313695','#74add1','#ffffbf','#f46d43','#a50026']
+        const scaled = Math.max(stops[0],Math.min(stops[stops.length-1],value))
+        let index = stops.findIndex((stop,stopIndex) => stopIndex < stops.length-1 && scaled <= stops[stopIndex+1])
+        if(index < 0) index=stops.length-2
+        const ratio = Math.max(0,Math.min(1,(scaled-stops[index])/(stops[index+1]-stops[index])))
+        const start = colors[index].match(/[0-9a-f]{2}/gi).map(channel=>parseInt(channel,16))
+        const end = colors[index+1].match(/[0-9a-f]{2}/gi).map(channel=>parseInt(channel,16))
+        return [...start.map((channel,i)=>Math.round(channel+(end[i]-channel)*ratio)),194]
+    }
+    const stops = [0,100,300,600,1000,1500]
+    const colors = ['#ffffd9','#edf8b1','#7fcdbb','#41b6c4','#225ea8','#081d58']
+    const scaled = Math.max(0, Math.min(stops[stops.length-1], value))
+    let index = stops.findIndex((stop, stopIndex) => stopIndex < stops.length-1 && scaled <= stops[stopIndex+1])
+    if(index < 0) index = stops.length-2
+    const ratio = Math.max(0, Math.min(1, (scaled-stops[index])/(stops[index+1]-stops[index])))
+    const start = colors[index].match(/[0-9a-f]{2}/gi).map(channel => parseInt(channel,16))
+    const end = colors[index+1].match(/[0-9a-f]{2}/gi).map(channel => parseInt(channel,16))
+    return [...start.map((channel,i) => Math.round(channel+(end[i]-channel)*ratio)),194]
+}
+
+function lowerGridIndex(axis, value){
+    let low = 0, high = axis.length-1
+    while(low < high-1){
+        const mid = Math.floor((low+high)/2)
+        if(axis[mid] <= value) low = mid
+        else high = mid
+    }
+    return Math.max(0,Math.min(axis.length-2,low))
+}
+
+function createSmoothedWeatherImage(id, grid){
+    const width = 512, height = 256
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    const image = context.createImageData(width,height)
+    const [west,south,east,north] = grid.extent
+    for(let py=0; py<height; py++){
+        const latitude = north-(py+.5)/height*(north-south)
+        const row = lowerGridIndex(grid.yCoordinates, latitude)
+        const y0 = grid.yCoordinates[row], y1 = grid.yCoordinates[row+1]
+        const fy = y1 === y0 ? 0 : Math.max(0,Math.min(1,(latitude-y0)/(y1-y0)))
+        for(let px=0; px<width; px++){
+            const longitude = west+(px+.5)/width*(east-west)
+            const column = lowerGridIndex(grid.xCoordinates, longitude)
+            const x0 = grid.xCoordinates[column], x1 = grid.xCoordinates[column+1]
+            const fx = x1 === x0 ? 0 : Math.max(0,Math.min(1,(longitude-x0)/(x1-x0)))
+            const corners = [
+                [row*grid.width+column,(1-fx)*(1-fy)],
+                [row*grid.width+column+1,fx*(1-fy)],
+                [(row+1)*grid.width+column,(1-fx)*fy],
+                [(row+1)*grid.width+column+1,fx*fy]
+            ]
+            let weighted = 0, weight = 0
+            corners.forEach(([index,factor]) => {
+                const value = grid.values[index]
+                if(value !== null && Number.isFinite(Number(value)) && factor > 0){ weighted += Number(value)*factor; weight += factor }
+            })
+            if(!weight) continue
+            const color = weatherColorChannels(id,weighted/weight)
+            const offset = (py*width+px)*4
+            image.data[offset] = color[0]
+            image.data[offset+1] = color[1]
+            image.data[offset+2] = color[2]
+            image.data[offset+3] = color[3]
+        }
+    }
+    context.putImageData(image,0,0)
+    return canvas.toDataURL('image/png')
+}
+
+async function fetchAnnualPrecipitationGrid(date){
+    const year = Number(date.slice(0,4))
+    const cacheKey = String(year)
+    if(temporalAnnualPrecipitationCache.has(cacheKey)) return temporalAnnualPrecipitationCache.get(cacheKey)
+    const promise = (async () => {
+        const {west, south, east, north, step} = TEMPORAL_ANNUAL_PRECIPITATION_GRID
+        const year = cacheKey
+        const response = await axios.get(`/data/temporal/05_weather/${year}/precipitation_${year}.geojson`)
+        const features = response.data?.features || []
+        if(!features.length) throw new Error(`缺少 ${year} 年度降水数据`)
+        const valuesByCoordinate = new Map()
+        let periodEnd = null
+        let temporalComplete = false
+        features.forEach(feature => {
+            const properties = feature.properties || {}
+            const longitude = Number(properties.longitude)
+            const latitude = Number(properties.latitude)
+            if(Number.isFinite(longitude) && Number.isFinite(latitude)){
+                valuesByCoordinate.set(`${longitude.toFixed(4)},${latitude.toFixed(4)}`, properties.value)
+            }
+            periodEnd = properties.period_end || periodEnd
+            temporalComplete = properties.temporal_complete === true || temporalComplete
+        })
+        const coordinates = []
+        const precipitation = []
+        const xCoordinates = []
+        const yCoordinates = []
+        for(let column=0; column<=(east-west)/step; column++) xCoordinates.push(west+column*step)
+        for(let row=0; row<=(north-south)/step; row++) yCoordinates.push(south+row*step)
+        for(let row=0; row<=(north-south)/step; row++){
+            for(let column=0; column<=(east-west)/step; column++){
+                const longitude = west + column*step
+                const latitude = south + row*step
+                coordinates.push([longitude, latitude])
+                const value = valuesByCoordinate.get(`${longitude.toFixed(4)},${latitude.toFixed(4)}`)
+                precipitation.push(value === null || value === undefined || !Number.isFinite(Number(value)) ? null : Number(value))
+            }
+        }
+        return {
+            coordinates,
+            precipitation,
+            values:precipitation,
+            step,
+            origin:[west,south],
+            xCoordinates,
+            yCoordinates,
+            extent:[west-step/2,south-step/2,east+step/2,north+step/2],
+            width:Math.round((east-west)/step)+1,
+            height:Math.round((north-south)/step)+1,
+            periodEnd,
+            temporalComplete
+        }
+    })()
+    temporalAnnualPrecipitationCache.set(cacheKey, promise)
+    try {
+        const result = await promise
+        while(temporalAnnualPrecipitationCache.size > 5) temporalAnnualPrecipitationCache.delete(temporalAnnualPrecipitationCache.keys().next().value)
+        return result
+    } catch(error) { temporalAnnualPrecipitationCache.delete(cacheKey); throw error }
+}
 
 
 const useMapStore =  defineStore('map',{
     state:()=>({
-            currentYear:2023,
+                                    parcelAnalysisLoading:false,
+            parcelAnalysisNotice:'',
+            parcelTimelineLoadKeys:[],
+            parcelTimelineSourceCache:markRaw(new Map()),
+            parcelTimelineConfigReqId:0,
+            parcelPageMode:null,
+            parcelIdentifySeedLayer:null,
+            parcelIdentifyYear:'',
+temporalDate:'2024-01-01',
+            temporalTemperatureEndDate:'2026-10-04',
+            temporalImageMonthly:false,
+            temporalImageDates:{},
+            temporalPendingPreviousLayers:{},
+currentYear:2023,
             currentMonth:1,
             map: null,
             // 时空数据模块：当前年月、已加载图层、地图色块显隐、悬停结果
@@ -312,7 +660,164 @@ const useMapStore =  defineStore('map',{
             cropWaterLockViewport:false,
     }),
     actions:{
-        getTemporalBasinFeatures:async function(){
+                            getCurrentParcelLayerName:function(){
+            const item = this.parcelTimelineDates[this.parcelTimelineIndex]
+            return (item && typeof item === 'object' && item.layer)
+                || this.resolveParcelLayerName(this.parcelTimelineSource?.layerTemplate, this.getCurrentParcelDate())
+        },
+setTemporalDate:function(date, flush=false){
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < TEMPORAL_DAILY_START) return
+            if(this.temporalLayerEnabled.temperature && date > this.temporalTemperatureEndDate) date = this.temporalTemperatureEndDate
+            if(this.temporalDate === date && !flush) return
+            this.temporalDate = date
+            this.temporalYear = Number(date.slice(0,4))
+            this.temporalMonth = Number(date.slice(5,7))
+            if(this.temporalRefreshTimer) clearTimeout(this.temporalRefreshTimer)
+            const refreshChangedLayers = () => {
+                Object.keys(this.temporalLayerEnabled).filter(id => {
+                    if(!this.temporalLayerEnabled[id] || !['sentinel1','sentinel2','temperature','precipitation'].includes(id)) return false
+                    if(id === 'sentinel1' || id === 'sentinel2') return true
+                    const layer = this.temporalLayerInstances[id]
+                    if(id === 'precipitation') return Number(layer?.get?.('temporalRemoteYear')) !== Number(date.slice(0,4))
+                    const grid = layer?.get?.('temporalWeatherGrid')
+                    if(id === 'temperature') return grid?.date !== date
+                    return false
+                }).forEach(id => this.loadTemporalLayer(id, true))
+                this.temporalRefreshTimer = null
+            }
+            if(flush) refreshChangedLayers()
+            else this.temporalRefreshTimer = setTimeout(refreshChangedLayers, 180)
+        },
+            setTemporalImageMonthly:function(monthly){
+            const changed = this.temporalImageMonthly !== !!monthly
+            this.temporalImageMonthly = !!monthly
+            const monthStart = `${this.temporalDate.slice(0,7)}-01`
+            if(this.temporalDate !== monthStart){
+                this.setTemporalDate(monthStart)
+            } else if(changed){
+                Object.keys(this.temporalLayerEnabled).filter(id => this.temporalLayerEnabled[id]
+                    && ['sentinel1','sentinel2'].includes(id))
+                    .forEach(id => this.loadTemporalLayer(id, true))
+            }
+        },
+            preloadTemporalDate:function(date){
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return Promise.resolve()
+            const jobs = []
+            const enqueue = (key, factory) => {
+                if(!temporalDatePreloadTasks.has(key)){
+                    const task = Promise.resolve().then(factory).catch(error => {
+                        temporalDatePreloadTasks.delete(key)
+                        throw error
+                    })
+                    temporalDatePreloadTasks.set(key, task)
+                    task.catch(() => {})
+                    while(temporalDatePreloadTasks.size > 32)
+                        temporalDatePreloadTasks.delete(temporalDatePreloadTasks.keys().next().value)
+                }
+                return temporalDatePreloadTasks.get(key)
+            }
+            ;['sentinel1','sentinel2'].filter(id => this.temporalLayerEnabled[id]).forEach(id => {
+                const key = `${id}:${this.temporalImageMonthly ? 'monthly' : 'daily'}:${date}`
+                jobs.push(enqueue(key, () => getNearestSentinelMosaic(id, date, this.temporalImageMonthly).then(image => {
+                    const minZoom = id === 'sentinel1' ? 6 : 9
+                    const source = new XYZ({
+                        url:image.url, projection:'EPSG:3857', crossOrigin:'anonymous', minZoom, maxZoom:14
+                    })
+                    return preloadVisibleSourceTiles(source, this.map)
+                })))
+            })
+            if(this.temporalLayerEnabled.temperature){
+                jobs.push(enqueue(`temperature:${date}`, () => fetchDailyTemperature(date).then(result => {
+                    if(!temporalPreparedTemperatureImages.has(date)){
+                        temporalPreparedTemperatureImages.set(date, createSmoothedWeatherImage('temperature', result.grid))
+                        while(temporalPreparedTemperatureImages.size > 3)
+                            temporalPreparedTemperatureImages.delete(temporalPreparedTemperatureImages.keys().next().value)
+                    }
+                    return true
+                })))
+            }
+            if(this.temporalLayerEnabled.precipitation){
+                const year = Number(date.slice(0,4))
+                const activeYear = Number(this.temporalLayerInstances.precipitation?.get?.('temporalRemoteYear'))
+                if(year !== activeYear){
+                    jobs.push(enqueue(`precipitation:${year}`, () => {
+                        const serverUrl = String(this.baseUrl || 'http://localhost:8080').replace(/\/$/, '')
+                        const source = new TileWMS({
+                            url:`${serverUrl}/geoserver/temporal/wms`,
+                            params:{LAYERS:`temporal:precipitation_${year}_basin_smooth`,VERSION:'1.1.1',FORMAT:'image/png',TRANSPARENT:true,TILED:true},
+                            projection:'EPSG:4326',serverType:'geoserver',crossOrigin:'anonymous',transition:0
+                        })
+                        return preloadVisibleSourceTiles(source, this.map)
+                    }))
+                }
+            }
+            return Promise.all(jobs.map(job => Promise.resolve(job).catch(error => {
+                console.warn(`预加载 ${date} 时相失败`, error)
+                return false
+            }))).then(results => results.every(result => result !== false && (!Array.isArray(result) || result.every(Boolean))))
+        },
+            syncRiverAnimationWith3D:function(){
+            const existing=this.temporalAnimationTimers.rivers
+            if(this.is3D){
+                if(existing) clearInterval(existing)
+                delete this.temporalAnimationTimers.rivers
+                return
+            }
+            const layer=this.temporalLayerInstances.rivers
+            const flowStroke=layer?.get?.('temporalFlowStroke')
+            if(!layer || !flowStroke || existing) return
+            let dashOffset=layer.get('temporalDashOffset') || 0
+            this.temporalAnimationTimers.rivers=setInterval(()=>{
+                if(this.is3D || this.temporalLayerInstances.rivers!==layer) return
+                dashOffset=(dashOffset-1)%18
+                layer.set('temporalDashOffset',dashOffset)
+                flowStroke.setLineDashOffset(dashOffset)
+                layer.changed()
+            },160)
+        },
+            removeTemporalLayerInstance:function(id, layer){
+            if(!layer) return
+            this.map?.removeLayer(layer)
+            const keys = layer.get?.('temporalClipKeys')
+            if(keys) unByKey(keys)
+            if(this.temporalClipKeys[id] === keys) delete this.temporalClipKeys[id]
+        },
+            completeTemporalLayerReplacement:function(id, layer, request){
+            if(this.temporalLayerRequests[id] !== request || this.temporalLayerInstances[id] !== layer) return
+            const previous = this.temporalPendingPreviousLayers[id]
+            if(previous && previous !== layer) this.removeTemporalLayerInstance(id, previous)
+            delete this.temporalPendingPreviousLayers[id]
+        },
+            createTemporalGeoServerLayer:function(id, year, zIndex, request){
+            const layerName = id === 'elevation' ? 'elevation_m_basin'
+                : id === 'slope' ? 'slope_deg_basin'
+                    : `precipitation_${year}_basin_smooth`
+            const serverUrl = String(this.baseUrl || 'http://localhost:8080').replace(/\/$/, '')
+            const source = new TileWMS({
+                url:`${serverUrl}/geoserver/temporal/wms`,
+                params:{
+                    LAYERS:`temporal:${layerName}`,
+                    VERSION:'1.1.1',
+                    FORMAT:'image/png',
+                    TRANSPARENT:true,
+                    TILED:true
+                },
+                projection:'EPSG:4326',
+                serverType:'geoserver',
+                crossOrigin:'anonymous',
+                transition:0
+            })
+            const opacity = id === 'precipitation' ? .76 : id === 'elevation' || id === 'slope' ? .82 : 1
+            const layer = new Tile({source, opacity, zIndex})
+            watchTileBatch(source, () => {
+                this.temporalLayerStatus[id] = 'ready'
+                this.completeTemporalLayerReplacement(id, layer, request)
+            }, () => {
+                if(this.temporalLayerRequests[id] === request) this.temporalLayerStatus[id] = 'error'
+            })
+            return layer
+        },
+getTemporalBasinFeatures:async function(){
             if(this.temporalBasinFeatures.length) return this.temporalBasinFeatures
             if(this.temporalBasinPromise) return this.temporalBasinPromise
             const url = `${this.baseUrl}/geoserver/agri-agent/ows`
@@ -336,9 +841,11 @@ const useMapStore =  defineStore('map',{
         clipTemporalLayerToBasin:function(id, layer){
             if(!layer || ![
                 'rivers','lakes','country_border','province_border','boundaries',
-                'elevation','slope','sentinel1','sentinel2'
+                'elevation','slope','sentinel1','sentinel2','temperature','precipitation'
             ].includes(id)) return
-            if(this.temporalClipKeys[id]) unByKey(this.temporalClipKeys[id])
+            const priorKeys = layer.get?.('temporalClipKeys')
+            if(priorKeys) unByKey(priorKeys)
+            const clipKeys = []
             const saved = new WeakSet()
             const drawRing = (context, event, ring) => {
                 ring.forEach((coordinate, index) => {
@@ -368,7 +875,9 @@ const useMapStore =  defineStore('map',{
                     saved.delete(event.context)
                 }
             })
-            this.temporalClipKeys[id] = markRaw([before, after])
+            clipKeys.push(before, after)
+            layer.set('temporalClipKeys', markRaw(clipKeys))
+            this.temporalClipKeys[id] = markRaw(clipKeys)
             this.getTemporalBasinFeatures().then(features => {
                 if(this.temporalLayerInstances[id] !== layer || !features.length) return
                 // 静态矢量仍需先下载文件，但把流域包围盒外的要素立即移除，
@@ -390,7 +899,7 @@ const useMapStore =  defineStore('map',{
                     }
                     source.getFeatures().slice().forEach(prune)
                     const addKey = source.on('addfeature', event => prune(event.feature))
-                    this.temporalClipKeys[id]?.push(addKey)
+                    clipKeys.push(addKey)
                 }
                 layer.changed()
             })
@@ -406,13 +915,15 @@ const useMapStore =  defineStore('map',{
                 style:feature => {
                     if(feature.get('level') !== level) return null
                     const river = level === 'river'
+                    const riverName = feature.get('name') || ''
                     return new Style({text:new Text({
-                        text:feature.get('name') || '',
+                        text:riverName,
                         textAlign:'center', textBaseline:'middle',
                         font:'600 12px sans-serif',
                         fill:new Fill({color:river ? '#064b70' : '#eaf9ff'}),
                         stroke:new Stroke({color:river ? 'rgba(255,255,255,.95)' : 'rgba(4,52,79,.92)', width:3}),
-                        padding:[2,4,2,4]
+                        padding:[2,4,2,4],
+                        offsetX:riverName === '阿亚古兹河' ? -18 : 0
                     })})
                 }
             })
@@ -671,26 +1182,24 @@ const useMapStore =  defineStore('map',{
 
         // 10.4 本地数据包：时空数据面板里的图层全部由这里统一加载/移除。
         setTemporalPeriod:function({year, month}){
-            const nextYear = Number(year)
-            const nextMonth = Number(month)
-            if(this.temporalYear === nextYear && this.temporalMonth === nextMonth) return
-            this.temporalYear = nextYear
-            this.temporalMonth = nextMonth
-            if(this.temporalRefreshTimer) clearTimeout(this.temporalRefreshTimer)
-            this.temporalRefreshTimer = setTimeout(() => {
-                Object.keys(this.temporalLayerEnabled).filter(id => this.temporalLayerEnabled[id]
-                    && ['sentinel1','sentinel2','temperature','precipitation'].includes(id))
-                    .forEach(id => this.loadTemporalLayer(id, true))
-                this.temporalRefreshTimer = null
-            }, 180)
+            this.setTemporalDate(`${year}-${String(month).padStart(2,'0')}-01`)
         },
         setTemporalLayer:function(id, visible){
             if(!this.map) return
+            if(visible && id === 'temperature' && this.temporalDate > this.temporalTemperatureEndDate)
+                this.setTemporalDate(this.temporalTemperatureEndDate,true)
+            if(visible && (id === 'sentinel1' || id === 'sentinel2')){
+                const other = id === 'sentinel1' ? 'sentinel2' : 'sentinel1'
+                if(this.temporalLayerEnabled[other]) this.setTemporalLayer(other, false)
+            }
             this.temporalLayerEnabled[id] = !!visible
             if(!visible){
                 this.temporalLayerRequests[id] = ++this.temporalRequestRevision
                 const layer = this.temporalLayerInstances[id]
-                if(layer) this.map.removeLayer(layer)
+                if(layer) this.removeTemporalLayerInstance(id, layer)
+                const previousLayer = this.temporalPendingPreviousLayers[id]
+                if(previousLayer && previousLayer !== layer) this.removeTemporalLayerInstance(id, previousLayer)
+                delete this.temporalPendingPreviousLayers[id]
                 const annotationLayer = this.temporalAnnotationLayers[id]
                 if(annotationLayer) this.map.removeLayer(annotationLayer)
                 delete this.temporalAnnotationLayers[id]
@@ -700,6 +1209,7 @@ const useMapStore =  defineStore('map',{
                 delete this.temporalClipKeys[id]
                 delete this.temporalLayerInstances[id]
                 delete this.temporalLayerStatus[id]
+                if(['sentinel1','sentinel2'].includes(id)) delete this.temporalImageDates[id]
                 if(id === 'rivers') this.temporalNamedRiverFeatures = []
                 if(this.temporalHoverInfo && this.temporalHoverInfo.layerId.split(',').includes(id)) this.temporalHoverInfo = null
                 return
@@ -708,8 +1218,9 @@ const useMapStore =  defineStore('map',{
         },
         setTemporalLayerColorVisibility:function(id, visible){
             this.temporalLayerColorVisibility[id] = visible
-            const layer = this.temporalLayerInstances[id]
-            if(layer && layer.setVisible) layer.setVisible(visible)
+            ;[this.temporalLayerInstances[id],this.temporalPendingPreviousLayers[id]].filter(Boolean).forEach(layer => {
+                if(layer.setVisible) layer.setVisible(visible)
+            })
         },
         setTemporalHoverGroup:function(group){
             this.temporalHoverGroup = group
@@ -723,7 +1234,12 @@ const useMapStore =  defineStore('map',{
             const request = ++this.temporalRequestRevision
             this.temporalLayerRequests[id] = request
             const current = () => this.temporalLayerEnabled[id] && this.temporalLayerRequests[id] === request
-            if(previous) this.map.removeLayer(previous)
+            if(previous && replace){
+                const retained = this.temporalPendingPreviousLayers[id] || previous
+                if(previous !== retained) this.removeTemporalLayerInstance(id, previous)
+                this.temporalPendingPreviousLayers[id] = markRaw(retained)
+            }
+            if(replace && ['sentinel1','sentinel2'].includes(id)) delete this.temporalImageDates[id]
             const previousAnnotation = this.temporalAnnotationLayers[id]
             if(previousAnnotation) this.map.removeLayer(previousAnnotation)
             delete this.temporalAnnotationLayers[id]
@@ -732,7 +1248,6 @@ const useMapStore =  defineStore('map',{
             if(id === 'rivers') this.temporalNamedRiverFeatures = []
             this.temporalLayerStatus[id] = 'loading'
             const root = '/data/temporal/'
-            const year = this.temporalYear
             const baseVector = (file, zIndex, style) => new VectorLayer({
                 source: new VectorSource({
                     url: root + file,
@@ -745,30 +1260,28 @@ const useMapStore =  defineStore('map',{
             let layer
             if(id === 'sentinel1' || id === 'sentinel2'){
                 try {
-                    const res = await axios.get(root + '04_imagery/services.json')
+                    this.temporalLayerStatus[id] = 'loading'
+                    const image = await getNearestSentinelMosaic(id, this.temporalDate, this.temporalImageMonthly)
                     if(!current()) return
-                    const prefix = id === 'sentinel1' ? 'S1_' : 'S2_'
-                    const service = res.data.layers.find(item => item.id === prefix + year)
-                    if(!service) throw new Error('所选年份暂无影像配置')
+                    this.temporalImageDates[id] = `${image.dateStart}/${image.dateEnd}`
                     const serviceMinZoom = id === 'sentinel1' ? 6 : 9
                     layer = new Tile({
                         source: new XYZ({
-                            url: service.xyz_url,
+                            url: image.url,
                             projection: 'EPSG:3857',
                             crossOrigin: 'anonymous',
+                            attributions:'Sentinel imagery © European Union/Copernicus; rendered by Microsoft Planetary Computer',
                             minZoom: serviceMinZoom,
                             maxZoom: 14
                         }),
                         zIndex: 5
                     })
-                    let hasLoadedTile = false
-                    layer.getSource().on('tileloaderror', () => {
-                        if(current() && !hasLoadedTile) this.temporalLayerStatus[id] = 'error'
-                    })
-                    layer.getSource().on('tileloadend', () => {
+                    watchTileBatch(layer.getSource(), () => {
                         if(!current()) return
-                        hasLoadedTile = true
                         this.temporalLayerStatus[id] = 'ready'
+                        this.completeTemporalLayerReplacement(id, layer, request)
+                    }, () => {
+                        if(current()) this.temporalLayerStatus[id] = 'error'
                     })
                 } catch(error) {
                     if(!current()) return
@@ -777,21 +1290,70 @@ const useMapStore =  defineStore('map',{
                     return
                 }
             } else if(id === 'temperature' || id === 'precipitation'){
-                layer = new ImageLayer({
-                    source:new ImageStatic({
-                        url:root + `05_weather/${year}/${id}_${year}_basin.png?v=contour-2`,
-                        imageExtent:TEMPORAL_WEATHER_EXTENT,
-                        projection:'EPSG:4326',
-                        interpolate:true
-                    }),
-                    opacity:.68,
-                    zIndex:12
-                })
-                axios.get(root + `05_weather/${year}/${id}_${year}_grid.json`).then(response => {
-                    if(this.temporalLayerInstances[id] !== layer) return
-                    layer.set('temporalWeatherGrid', markRaw(response.data))
-                    this.temporalLayerStatus[id] = 'ready'
-                }).catch(() => { if(current()) this.temporalLayerStatus[id] = 'error' })
+                try {
+                    this.temporalLayerStatus[id] = 'loading'
+                    let grid = null
+                    if(id === 'precipitation'){
+                        try {
+                            // WMS supplies the map image; the local grid is retained only for exact pointer readouts.
+                            grid = await fetchAnnualPrecipitationGrid(this.temporalDate)
+                        } catch(error) {
+                            console.warn('年度降水像元查询数据暂不可用，仍尝试加载 GeoServer 图层', error)
+                        }
+                    }
+                    const dailyTemperature = id === 'temperature' ? await fetchDailyTemperature(this.temporalDate) : null
+                    if(!current()) return
+                    const dataGrid = id === 'temperature' ? dailyTemperature.grid : grid
+                    if(id === 'temperature' && (!dataGrid?.values?.length || !dataGrid.width || !dataGrid.height)) throw new Error('气象栅格数据为空')
+                    if(id === 'temperature'){
+                        const available = dailyTemperature.metadata.files.map(file => file.period_end).sort()
+                        this.temporalTemperatureEndDate=available[available.length-1] || this.temporalTemperatureEndDate
+                    }
+                    if(id === 'temperature'){
+                        const imageUrl = temporalPreparedTemperatureImages.get(this.temporalDate)
+                            || createSmoothedWeatherImage(id, dataGrid)
+                        temporalPreparedTemperatureImages.delete(this.temporalDate)
+                        const imageSource = new ImageStatic({url:imageUrl, imageExtent:dataGrid.extent, projection:'EPSG:4326'})
+                        layer = new ImageLayer({
+                            source:imageSource,
+                            opacity:1,
+                            attributions:'Daily 2 m mean temperature · Copernicus ERA5 / Open-Meteo',
+                            zIndex:12
+                        })
+                        imageSource.on('imageloadend', () => {
+                            if(!current()) return
+                            this.temporalLayerStatus[id] = 'ready'
+                            this.completeTemporalLayerReplacement(id, layer, request)
+                        })
+                        imageSource.on('imageloaderror', () => {
+                            if(current()) this.temporalLayerStatus[id] = 'error'
+                        })
+                        const xStep = dataGrid.xCoordinates[1]-dataGrid.xCoordinates[0]
+                        const yStep = dataGrid.yCoordinates[1]-dataGrid.yCoordinates[0]
+                        layer.set('temporalWeatherGrid', markRaw({
+                            origin:[dataGrid.xCoordinates[0],dataGrid.yCoordinates[0]],
+                            step:[xStep,yStep], width:dataGrid.width, height:dataGrid.height, values:dataGrid.values,
+                            units:'°C', date:this.temporalDate
+                        }))
+                    } else {
+                        layer = this.createTemporalGeoServerLayer(id, Number(this.temporalDate.slice(0,4)), 12, request)
+                        layer.set('temporalRemoteYear', Number(this.temporalDate.slice(0,4)))
+                        if(dataGrid?.values?.length){
+                            const xStep = dataGrid.xCoordinates[1]-dataGrid.xCoordinates[0]
+                            const yStep = dataGrid.yCoordinates[1]-dataGrid.yCoordinates[0]
+                            layer.set('temporalWeatherGrid', markRaw({
+                                origin:[dataGrid.xCoordinates[0],dataGrid.yCoordinates[0]],
+                                step:[xStep,yStep], width:dataGrid.width, height:dataGrid.height, values:dataGrid.values,
+                                units:'mm/year', year:Number(this.temporalDate.slice(0,4)),
+                                periodEnd:grid.periodEnd || null, temporalComplete:grid.temporalComplete === true
+                            }))
+                        }
+                    }
+                } catch(error) {
+                    if(current()) this.temporalLayerStatus[id] = 'error'
+                    console.error('气象图层数据加载失败', error)
+                    return
+                }
             } else if(id === 'rivers'){
                 const source = new VectorSource()
                 const baseStyle = new Style({stroke:new Stroke({color:'#075b86', width:2.2})})
@@ -800,30 +1362,79 @@ const useMapStore =  defineStore('map',{
                 layer = new VectorLayer({source, zIndex:32, style:[baseStyle, flowStyle]})
                 this.addTemporalHydroAnnotations(id, root)
                 // 直接加载离线永久裁切后的河网，浏览器不再解析和渲染流域外数据。
-                Promise.all(['rivers_major_basin','rivers_named_basin'].map(async name => {
+                Promise.all(['rivers_major_basin','rivers_named_basin','hydro_labels'].map(async name => {
                     const res = await axios.get(`${root}01_basemap/${name}.geojson`)
                     return {name, features:new GeoJSON().readFeatures(res.data, {dataProjection:'EPSG:4326', featureProjection:'EPSG:4326'})}
                 })).then(groups => {
                     if(this.temporalLayerInstances[id] !== layer) return
-                    groups.forEach(group => source.addFeatures(group.features))
+                    groups.forEach(group => {
+                        const features = group.name === 'rivers_named_basin'
+                            ? group.features.filter(feature => feature.get('featurecla') !== 'Lake Centerline')
+                            : group.features
+                        source.addFeatures(features)
+                    })
                     const namedGroup = groups.find(group => group.name === 'rivers_named_basin')
-                    this.temporalNamedRiverFeatures = markRaw(namedGroup ? namedGroup.features : [])
+                    // Natural Earth 的名称层同时包含 Lake Centerline 要素；这些是湖泊中心线，不能作为河流显示。
+                    const namedRiverFeatures = namedGroup
+                        ? namedGroup.features.filter(feature => feature.get('featurecla') !== 'Lake Centerline')
+                        : []
+                    this.temporalNamedRiverFeatures = markRaw(namedRiverFeatures)
+                    const riverFeatures = groups.find(group => group.name === 'rivers_major_basin')?.features || []
+                    const byId = new Map(riverFeatures.map(feature => [Number(feature.get('HYRIV_ID')), feature]))
+                    const upstream = new Map()
+                    riverFeatures.forEach(feature => {
+                        const downstreamId = Number(feature.get('NEXT_DOWN'))
+                        if(!upstream.has(downstreamId)) upstream.set(downstreamId, [])
+                        upstream.get(downstreamId).push(feature)
+                        feature.unset('__riverNameZh', true)
+                    })
+                    const labelFeatures = groups.find(group => group.name === 'hydro_labels')?.features || []
+                    labelFeatures.filter(feature => feature.get('level') === 'river').forEach(label => {
+                        const coordinate = label.getGeometry()?.getCoordinates()
+                        if(!coordinate) return
+                        let anchor = null
+                        let nearest = Infinity
+                        riverFeatures.forEach(feature => {
+                            const geometry = feature.getGeometry()
+                            const coordinates = geometry.getType() === 'LineString' ? [geometry.getCoordinates()] : geometry.getCoordinates()
+                            coordinates.forEach(line => line.forEach(point => {
+                                const distance = (point[0] - coordinate[0]) ** 2 + (point[1] - coordinate[1]) ** 2
+                                if(distance < nearest){ nearest = distance; anchor = feature }
+                            }))
+                        })
+                        if(!anchor || nearest > 0.35 ** 2) return
+                        const name = label.get('name')
+                        const mark = feature => { if(!feature.get('__riverNameZh')) feature.set('__riverNameZh', name) }
+                        anchor.set('__riverNameZh', name)
+                        let current = anchor
+                        const visited = new Set()
+                        for(let step = 0; current && step < 100; step++){
+                            const id = Number(current.get('HYRIV_ID'))
+                            if(visited.has(id)) break
+                            visited.add(id)
+                            mark(current)
+                            current = byId.get(Number(current.get('NEXT_DOWN')))
+                        }
+                        current = anchor
+                        for(let step = 0; current && step < 100; step++){
+                            const candidates = (upstream.get(Number(current.get('HYRIV_ID'))) || [])
+                                .filter(feature => !visited.has(Number(feature.get('HYRIV_ID'))))
+                                .sort((a, b) => Number(b.get('UPLAND_SKM')) - Number(a.get('UPLAND_SKM')))
+                            current = candidates[0]
+                            if(current){ visited.add(Number(current.get('HYRIV_ID'))); mark(current) }
+                        }
+                    })
                     this.temporalLayerStatus[id] = 'ready'
                 }).catch(() => { if(current()) this.temporalLayerStatus[id] = 'error' })
-                let dashOffset = 0
-                this.temporalAnimationTimers[id] = setInterval(() => {
-                    if(this.temporalLayerInstances[id] !== layer) return
-                    dashOffset = (dashOffset - 1) % 18
-                    flowStroke.setLineDashOffset(dashOffset)
-                    layer.changed()
-                }, 160)
+                layer.set('temporalFlowStroke',flowStroke)
+                layer.set('temporalDashOffset',0)
             } else if(id === 'lakes'){
                 layer = new VectorLayer({
                     source:new VectorSource({url:root + '01_basemap/lakes.geojson', format:new GeoJSON(), projection:'EPSG:4326'}),
                     zIndex:24,
                     style:new Style({
-                        fill:new Fill({color:'rgba(18,112,163,.78)'}),
-                        stroke:new Stroke({color:'#064f7b', width:1.8})
+                        fill:new Fill({color:'rgba(82,174,215,.66)'}),
+                        stroke:new Stroke({color:'#5b9fbd', width:1.8})
                     })
                 })
                 this.addTemporalHydroAnnotations(id, root)
@@ -834,7 +1445,7 @@ const useMapStore =  defineStore('map',{
                 const isCountry = id === 'country_border'
                 const source = new VectorSource()
                 layer = new VectorLayer({source, zIndex: isCountry ? 31 : 30, style:new Style({
-                    stroke:new Stroke({color:isCountry ? '#b6162b' : '#c97800', width:isCountry ? 2.6 : 1.9, lineDash:isCountry ? undefined : [6,4]})
+                    stroke:new Stroke({color:isCountry ? '#b6162b' : '#ffffff', width:isCountry ? 2.6 : 1.9})
                 })})
                 const labelLevel = isCountry ? 'country' : 'province'
                 const annotationLayer = new VectorLayer({
@@ -842,11 +1453,28 @@ const useMapStore =  defineStore('map',{
                     zIndex:70,
                     declutter:true,
                     minZoom:0,
-                    style:feature => {
+                    style:(feature, resolution) => {
                         if(feature.get('level') !== labelLevel) return null
                         const country = labelLevel === 'country'
+                        const bothBoundariesEnabled = !!this.temporalLayerInstances.country_border && !!this.temporalLayerInstances.province_border
+                        const otherLevel = country ? 'province' : 'country'
+                        const otherLayerId = country ? 'province_border' : 'country_border'
+                        const otherLabels = bothBoundariesEnabled
+                            ? this.temporalAnnotationLayers[otherLayerId]?.getSource()?.getFeatures()?.filter(item => item.get('level') === otherLevel) || []
+                            : []
+                        const coordinate = feature.getGeometry()?.getCoordinates()
+                        const pixel = coordinate && this.map?.getPixelFromCoordinate(coordinate)
+                        const nearbyLabel = pixel && otherLabels.find(item => {
+                            if(item.get('parent') !== feature.get('parent')) return false
+                            const otherPixel = this.map?.getPixelFromCoordinate(item.getGeometry()?.getCoordinates())
+                            return otherPixel && Math.hypot(pixel[0] - otherPixel[0], pixel[1] - otherPixel[1]) <= 90
+                        })
+                        if(country && nearbyLabel) return null
+                        const text = !country && nearbyLabel
+                            ? `${feature.get('name')}（${nearbyLabel.get('name')}）`
+                            : feature.get('name') || ''
                         return new Style({text:new Text({
-                            text:feature.get('name') || '',
+                            text,
                             textAlign:'center', textBaseline:'middle',
                             font:country ? '700 14px sans-serif' : '600 11px sans-serif',
                             fill:new Fill({color:country ? '#68202a' : '#6f4a12'}),
@@ -868,9 +1496,9 @@ const useMapStore =  defineStore('map',{
                 const source = new VectorSource()
                 layer = new VectorLayer({source, zIndex: 30, style: feature => new Style({
                     stroke: new Stroke({
-                        color: feature.get('__boundaryType') === 'country' ? '#e63946' : '#f59e0b',
+                        color: feature.get('__boundaryType') === 'country' ? '#e63946' : '#ffffff',
                         width: feature.get('__boundaryType') === 'country' ? 2.4 : 1.7,
-                        lineDash: feature.get('__boundaryType') === 'country' ? undefined : [6, 4]
+                        lineDash: undefined
                     })
                 })})
                 Promise.all(['country_borders', 'province_borders'].map(async name => {
@@ -880,25 +1508,29 @@ const useMapStore =  defineStore('map',{
                     source.addFeatures(features)
                 })).then(() => { this.temporalLayerStatus[id] = 'ready' }).catch(() => { if(current()) this.temporalLayerStatus[id] = 'error' })
             } else if(id === 'elevation' || id === 'slope'){
-                const image = id === 'elevation' ? 'elevation_m.png' : 'slope_deg.png'
-                layer = new ImageLayer({
-                    source: new ImageStatic({
-                        url: root + `03_terrain/${image}`,
-                        imageExtent: TEMPORAL_RASTER_EXTENT,
-                        projection: 'EPSG:4326'
-                    }),
-                    opacity: .82,
-                    zIndex: id === 'elevation' ? 3 : 4
-                })
+                layer = this.createTemporalGeoServerLayer(id, null, id === 'elevation' ? 3 : 4, request)
             } else {
                 delete this.temporalLayerStatus[id]
                 return
             }
+            layer.set('temporalLayerId', id)
             this.temporalLayerInstances[id] = markRaw(layer)
+            if(id === 'rivers') this.syncRiverAnimationWith3D()
             this.clipTemporalLayerToBasin(id, layer)
             if(this.temporalLayerColorVisibility[id] === false) layer.setVisible(false)
             this.map.addLayer(layer)
-            if(id !== 'temperature' && id !== 'precipitation'
+            if(replace){
+                const preloadKey = ['sentinel1','sentinel2'].includes(id)
+                    ? `${id}:${this.temporalImageMonthly ? 'monthly' : 'daily'}:${this.temporalDate}`
+                    : id === 'precipitation'
+                        ? `${id}:${this.temporalDate.slice(0,4)}`
+                        : `${id}:${this.temporalDate}`
+                const preloaded = temporalDatePreloadTasks.get(preloadKey)
+                if(preloaded) preloaded.then(ready => {
+                    if(ready) this.completeTemporalLayerReplacement(id, layer, request)
+                })
+            }
+            if(id !== 'temperature' && id !== 'precipitation' && id !== 'elevation' && id !== 'slope'
                 && id !== 'sentinel1' && id !== 'sentinel2' && id !== 'boundaries'
                 && id !== 'country_border' && id !== 'province_border'){
                 this.temporalLayerStatus[id] = 'ready'
@@ -1250,6 +1882,7 @@ const useMapStore =  defineStore('map',{
             
             const parcelLayer = new Tile({
                 source: parcelSource,
+                visible: false,
                 zIndex: 50
             })
 
@@ -1511,23 +2144,34 @@ const useMapStore =  defineStore('map',{
 
         // 读取日期列表：优先用 /static/parcelTimeline.json，读不到就用占位区间
         getParcelTimelineDates:async function(){
+            const requestId = ++this.parcelTimelineConfigReqId
             let dates = []
+            let source = null
+            let defaultYear = null
             try{
                 const res = await axios.get('/static/parcelTimeline.json')
-                if(Array.isArray(res.data)) dates = res.data
+                const config = res.data
+                dates = Array.isArray(config) ? config : (config?.dates || [])
+                source = Array.isArray(config) ? null : (config?.source || null)
+                defaultYear = config?.defaultYear
             }catch(e){
                 dates = []
             }
+            if(requestId !== this.parcelTimelineConfigReqId) return
+            if(!Array.isArray(dates)) dates = []
             dates = dates
-                .map(item => (typeof item === 'string' ? item : (item && item.date)))
-                .filter(Boolean)
+                .filter(item => /^\d{4}-\d{2}-\d{2}$/.test(typeof item === 'string' ? item : item?.date || ''))
             if(dates.length === 0){
                 // 数据还没接入，先用占位日期把交互跑起来
-                this.setParcelTimelineDates(this.buildPlaceholderDates(PARCEL_TIMELINE_DEFAULT_RANGE))
+                this.setParcelTimelineDates(this.buildPlaceholderDates(PARCEL_TIMELINE_DEFAULT_RANGE), null)
                 this.parcelTimelineNotice = '占位日期'
                 return
             }
-            this.setParcelTimelineDates(dates)
+            if(defaultYear != null){
+                const index = dates.findIndex(item => String(typeof item === 'string' ? item : item.date).slice(0,4) === String(defaultYear))
+                this.parcelTimelineIndex = index >= 0 ? index : 0
+            }
+            this.setParcelTimelineDates(dates, source)
         },
 
         // 数据接入接口。dates 支持两种写法：
@@ -1567,6 +2211,25 @@ const useMapStore =  defineStore('map',{
             const next = Math.min(Math.max(Number(index) || 0, 0), max)
             if(next === this.parcelTimelineIndex) return
             this.parcelTimelineIndex = next
+            // 分析板块监听同一年度下标取数，不触发可视化的识别动画。
+            if(['stats','pattern','change'].includes(this.parcelPageMode)){
+                if(this.parcelTimelineApplyTimer) clearTimeout(this.parcelTimelineApplyTimer)
+                this.parcelTimelineApplyTimer = null
+                return
+            }
+            // 年份标签先更新时立即清除旧年度结果，防抖期间也不会显示错年地块。
+            if(this.parcelPageMode === 'visual'){
+                this.removeParcelTimelineLayer()
+                this.parcelTimelineNotice = `${this.getCurrentParcelDate().slice(0,4)}年地块正在加载…`
+            }else if(this.parcelIdentifyEnabled || this.parcelTimelineSource?.displayMode === 'roi'){
+                this.clearParcelIdentification()
+                this.parcelTimelineNotice = `${this.getCurrentParcelDate().slice(0,4)}年 · ${this.parcelRoiExtent ? '正在识别中…' : '请先框选区域'}`
+                if(this.parcelRoiExtent){
+                    this.parcelTimelineLoading = true
+                    this.parcelIdentifyPhase = 'loading'
+                    this.parcelIdentifyNotice = `${this.getCurrentParcelDate().slice(0,4)}年选区地块正在识别中…`
+                }
+            }
             if(this.parcelTimelineApplyTimer) clearTimeout(this.parcelTimelineApplyTimer)
             this.parcelTimelineApplyTimer = setTimeout(() => {
                 this.parcelTimelineApplyTimer = null
@@ -1611,59 +2274,120 @@ const useMapStore =  defineStore('map',{
         applyParcelTimelineDate:async function(){
             const date = this.getCurrentParcelDate()
             if(!date) return
+            if(['stats','pattern','change'].includes(this.parcelPageMode)){
+                this.removeParcelTimelineLayer()
+                return
+            }
             this.removeParcelTimelineLayer()
             if(!this.parcelTimelineSource){
+                if(this.parcelIdentifyEnabled) this.clearParcelIdentification()
                 this.parcelTimelineNotice = '数据未接入'
                 return
             }
 
+            const showAllParcels = this.parcelPageMode === 'visual'
+            if(!showAllParcels && (this.parcelIdentifyEnabled || this.parcelTimelineSource.displayMode === 'roi')){
+                this.clearParcelIdentification()
+                this.parcelTimelineNotice = `${date.slice(0,4)}年 · 请先框选区域`
+                if(this.parcelIdentifyEnabled && this.parcelRoiExtent){
+                    await this.refreshParcelIdentification()
+                }
+                return
+            }
+
+            if(showAllParcels) this.clearParcelIdentification()
             const reqId = ++this.parcelTimelineReqId
             this.parcelTimelineLoading = true
-            this.parcelTimelineNotice = ''
+            const label = `${date.slice(0,4)}年地块`
+            this.parcelTimelineNotice = `${label}正在加载…`
             try{
                 const source = this.parcelTimelineSource
                 const item = this.parcelTimelineDates[this.parcelTimelineIndex]
                 const layerName = (item && typeof item === 'object' && item.layer)
                     || this.resolveParcelLayerName(source.layerTemplate, date)
-                if(!source.url || !layerName) throw new Error('数据源配置不完整')
+                const url = source.url || (this.baseUrl && `${this.baseUrl.replace(/\/$/,'')}/geoserver/${encodeURIComponent(source.workspace || 'agri-agent')}/wms`)
+                if(!url || !layerName || (source.type && source.type !== 'wms')) throw new Error('数据源配置不完整')
 
-                const wmsSource = new TileWMS({
-                    url: source.url,
-                    params:{
-                        LAYERS: layerName,
-                        VERSION: source.version || '1.1.1',
-                        TILED: true,
-                        STYLES: source.styles || ''
-                    },
-                    projection: source.projection || 'EPSG:4326',
-                    serverType: 'geoserver'
-                })
+                // GWC 只接收固定256像素瓦片；高DPI请求会绕过缓存或被拒绝。
+                // 缓存入口使用已发布的默认红色样式，显式短样式名不被GWC接受。
+                const cacheUrl = showAllParcels && source.tileCacheUrl
+                const tileUrl = cacheUrl ? (/^https?:\/\//.test(cacheUrl) ? cacheUrl : `${this.baseUrl.replace(/\/$/,'')}${cacheUrl}`) : url
+                const params = {
+                    LAYERS: layerName,
+                    VERSION: source.version || '1.1.1',
+                    TILED: true,
+                    FORMAT: 'image/png',
+                    TRANSPARENT: true,
+                    DATA_VERSION: source.dataVersion || '',
+                    STYLES: cacheUrl ? (source.tileCacheStyles || '') : (source.styles || '')
+                }
+                const cacheKey = JSON.stringify([tileUrl, params, source.projection || 'EPSG:4326'])
+                if(!this.parcelTimelineSourceCache) this.parcelTimelineSourceCache = markRaw(new Map())
+                let wmsSource = this.parcelTimelineSourceCache.get(cacheKey)
+                const reused = !!wmsSource
+                if(!wmsSource){
+                    wmsSource = markRaw(new TileWMS({
+                        url: tileUrl,
+                        params,
+                        projection: source.projection || 'EPSG:4326',
+                        serverType: 'geoserver',
+                        hidpi: !cacheUrl,
+                        cacheSize: 256,
+                        transition: 0
+                    }))
+                    this.parcelTimelineSourceCache.set(cacheKey,wmsSource)
+                    if(this.parcelTimelineSourceCache.size > 3) this.parcelTimelineSourceCache.delete(this.parcelTimelineSourceCache.keys().next().value)
+                }
                 const layer = new Tile({
                     source: wmsSource,
                     zIndex: source.zIndex || 5
                 })
+                let pending = 0, failed = false
+                const active = () => reqId === this.parcelTimelineReqId
+                const finish = error => {
+                    if(!active()) return
+                    if(error) this.parcelTimelineSourceCache.delete(cacheKey)
+                    failed = failed || error
+                    pending = Math.max(0,pending - 1)
+                    if(pending) return
+                    this.parcelTimelineLoading = false
+                    this.parcelTimelineNotice = failed ? `${label}暂不可用，请检查数据服务` : (showAllParcels ? `${label} · 当前视野已加载` : label)
+                }
+                this.parcelTimelineLoadKeys = markRaw([
+                    wmsSource.on('tileloadstart',() => {
+                        if(!active()) return
+                        if(!pending) failed = false
+                        pending++
+                        this.parcelTimelineLoading = true
+                        this.parcelTimelineNotice = `${label}正在加载…`
+                    }),
+                    wmsSource.on('tileloadend',() => finish(false)),
+                    wmsSource.on('tileloaderror',() => finish(true))
+                ])
                 if(reqId !== this.parcelTimelineReqId) return // 已有更新的日期，丢弃这次结果
-                this.parcelTimelineLayer = layer
+                // 地图保存原始图层引用；Vue 代理会导致 removeLayer 无法匹配旧年度。
+                this.parcelTimelineLayer = markRaw(layer)
+                // 已缓存瓦片不会再发loadstart，不能让回切年份一直停留在加载状态。
+                this.parcelTimelineLoading = false
+                if(reused) this.parcelTimelineNotice = showAllParcels ? `${label} · 已复用缓存` : label
                 if(this.map && this.map.addLayer) this.map.addLayer(layer)
             }catch(e){
                 console.warn('日期图层加载失败：', e)
-                this.parcelTimelineNotice = '该日期暂无数据'
-            }finally{
-                if(reqId === this.parcelTimelineReqId) this.parcelTimelineLoading = false
+                this.parcelTimelineNotice = `${label}暂不可用，请检查数据服务`
+                this.parcelTimelineLoading = false
             }
         },
 
         removeParcelTimelineLayer:function(){
-            if(!this.map || !this.map.removeLayer) return
-            try{
-                if(Object.getOwnPropertyNames(this.parcelTimelineLayer).length !== 1){
-                    this.map.removeLayer(this.parcelTimelineLayer)
-                }
-            }catch(e){console.warn(e)}
+            this.parcelTimelineReqId++
+            unByKey(this.parcelTimelineLoadKeys || [])
+            this.parcelTimelineLoadKeys = []
+            this.parcelTimelineLoading = false
+            if(this.map?.removeLayer && this.parcelTimelineLayer) this.map.removeLayer(this.parcelTimelineLayer)
             this.parcelTimelineLayer = new Layer({})
         },
 
-        toggleParcelTimelinePlay:function(){
+        toggleParcelTimelinePlay:function(yearOnly = false){
             if(this.parcelTimelinePlaying){
                 this.stopParcelTimelinePlay()
                 return
@@ -1671,7 +2395,19 @@ const useMapStore =  defineStore('map',{
             if(this.parcelTimelineDates.length < 2) return
             this.parcelTimelinePlaying = true
             this.parcelTimelineTimer = setInterval(() => {
-                const next = (this.parcelTimelineIndex + 1) % this.parcelTimelineDates.length
+                // 服务响应较慢时等当前年度加载完成，避免播放持续取消请求而一直空白。
+                if(this.parcelTimelineLoading || this.parcelAnalysisLoading || ['loading','points','lines','faces'].includes(this.parcelIdentifyPhase)) return
+                let next = (this.parcelTimelineIndex + 1) % this.parcelTimelineDates.length
+                if(yearOnly){
+                    const year = this.getCurrentParcelDate().slice(0, 4)
+                    while(next !== this.parcelTimelineIndex && this.getParcelDateAt(next).slice(0, 4) === year){
+                        next = (next + 1) % this.parcelTimelineDates.length
+                    }
+                    if(next === this.parcelTimelineIndex){
+                        this.stopParcelTimelinePlay()
+                        return
+                    }
+                }
                 this.parcelTimelineIndex = next
                 this.applyParcelTimelineDate()
             }, PARCEL_TIMELINE_PLAY_INTERVAL)
@@ -1700,11 +2436,13 @@ const useMapStore =  defineStore('map',{
                 this.startParcelRoiDraw()
             }else{
                 this.clearParcelRoi()
+                if(this.parcelPageMode === 'visual') this.applyParcelTimelineDate()
             }
         },
 
         // 进入框选模式。这个模式会一直开着，直到点“取消框选”
         startParcelRoiDraw:function(){
+            if(this.parcelPageMode && this.parcelPageMode !== 'identify') return
             if(!this.map || !this.map.addInteraction) return
             this.stopParcelRoi()
             this.clearParcelRoiLayers()
@@ -1719,6 +2457,9 @@ const useMapStore =  defineStore('map',{
             this.stopParcelRoi()
             this.parcelRoiMode = mode
             if(mode === 'pan'){
+                // 边框拖动优先于地图平移；按住其余位置仍交给地图。
+                this.parcelRoiDrag = this.createParcelRoiDrag()
+                this.map.addInteraction(this.parcelRoiDrag)
                 this.setMapCursor('grab')
                 return
             }
@@ -1805,7 +2546,7 @@ const useMapStore =  defineStore('map',{
             const dragState = {start: null, ring: null}
             return new PointerInteraction({
                 handleDownEvent: evt => {
-                    if(self.parcelRoiMode !== 'draw' || self.parcelRoiState === 'idle' || evt.originalEvent?.button > 0) return false
+                    if(!['draw','pan'].includes(self.parcelRoiMode) || self.parcelRoiState === 'idle' || evt.originalEvent?.button > 0) return false
                     if(!self.parcelRoiRefs) return false
                     if(!self.isOnParcelRoiEdge(evt.coordinate)) return false
                     dragState.start = evt.coordinate.slice()
@@ -1820,18 +2561,22 @@ const useMapStore =  defineStore('map',{
                     refs.boxGeometry.setCoordinates([
                         dragState.ring.map(point => [point[0] + dx, point[1] + dy])
                     ])
-                    self.syncParcelRoi()
+                    // 移动时只预览新边框，松手后才裁剪、清除旧结果并识别新范围。
+                    if(self.parcelIdentifyEnabled){
+                        refs.maskFeature.getGeometry().setCoordinates([refs.worldRing, refs.boxGeometry.getCoordinates()[0]])
+                    }else self.syncParcelRoi()
                 },
                 handleUpEvent: () => {
                     if(!dragState.start) return false
                     dragState.start = null
                     // 拖完再重算，避免拖动过程中反复取数
+                    if(self.parcelIdentifyEnabled) self.syncParcelRoi()
                     self.refreshParcelRoiContent()
                     return false
                 },
                 handleMoveEvent: evt => {
-                    if(self.parcelRoiState === 'idle' || self.parcelRoiMode !== 'draw') return
-                    self.setMapCursor(self.isOnParcelRoiEdge(evt.coordinate) ? 'move' : 'crosshair')
+                    if(self.parcelRoiState === 'idle' || !['draw','pan'].includes(self.parcelRoiMode)) return
+                    self.setMapCursor(self.isOnParcelRoiEdge(evt.coordinate) ? 'move' : self.parcelRoiMode === 'pan' ? 'grab' : 'crosshair')
                 }
             })
         },
@@ -1907,6 +2652,7 @@ const useMapStore =  defineStore('map',{
 
         // 应用选区：记住原视图，缩放居中，再把选区以外盖成灰色
         applyParcelRoi:function(extent){
+            if(this.parcelPageMode && this.parcelPageMode !== 'identify') return
             if(!this.map || !this.map.getView || !extent) return
             const view = this.map.getView()
             const projection = view.getProjection()
@@ -1915,7 +2661,7 @@ const useMapStore =  defineStore('map',{
             if(!this.parcelRoiPrevView){
                 this.parcelRoiPrevView = {center: view.getCenter(), zoom: view.getZoom()}
             }
-            view.fit(extent, {
+            if(!this.is3D) view.fit(extent, {
                 padding: [PARCEL_ROI_PADDING, PARCEL_ROI_PADDING, PARCEL_ROI_PADDING, PARCEL_ROI_PADDING],
                 duration: 400
             })
@@ -2020,11 +2766,16 @@ const useMapStore =  defineStore('map',{
             this.parcelRoiExtent = null
             this.parcelRoiState = 'idle'
             // 选区没了，统计结果也跟着清掉
-            this.refreshCropAnalysis()
+            if(!this.parcelPageMode) this.refreshCropAnalysis()
         },
 
         // 农田与作物页面共享框选交互，分别更新各自的数据。
         refreshParcelRoiContent:function(){
+            // 分析面板监听选区变化，各自取数；不在后台播放红色识别动画。
+            if(this.parcelPageMode && this.parcelPageMode !== 'identify'){
+                this.clearParcelIdentification()
+                return
+            }
             if(this.parcelIdentifyEnabled) this.refreshParcelIdentification()
             else this.refreshCropAnalysis()
         },
@@ -2033,236 +2784,321 @@ const useMapStore =  defineStore('map',{
             this.parcelIdentifyReqId++
             if(this.parcelIdentifyAbort) this.parcelIdentifyAbort.abort()
             this.parcelIdentifyAbort = null
-            if(this.parcelIdentifyRenderKeys) unByKey(this.parcelIdentifyRenderKeys)
-            this.parcelIdentifyRenderKeys = null
-            if(this.parcelIdentifyViewKey) unByKey(this.parcelIdentifyViewKey)
-            this.parcelIdentifyViewKey = null
             if(this.parcelIdentifyTimer) clearInterval(this.parcelIdentifyTimer)
             this.parcelIdentifyTimer = null
             if(this.parcelIdentifyLayer && this.map) this.map.removeLayer(this.parcelIdentifyLayer)
             this.parcelIdentifyLayer = null
-            if(this.parcelIdentifyOriginalVisible !== null && this.agriParcelLayer){
-                this.agriParcelLayer.setVisible(this.parcelIdentifyOriginalVisible)
-            }
-            this.parcelIdentifyOriginalVisible = null
+            if(this.parcelIdentifySeedLayer && this.map) this.map.removeLayer(this.parcelIdentifySeedLayer)
+            this.parcelIdentifySeedLayer = null
+            // 退出或提交新选区后隐藏旧面，下一次识别重新从点开始。
+            if(this.agriParcelLayer) this.agriParcelLayer.setVisible(false)
             this.parcelIdentifyCount = 0
-            this.parcelIdentifyOverview = false
+            this.parcelIdentifyYear = ''
             this.parcelIdentifyPhase = 'idle'
             this.parcelIdentifyProgress = 0
+            if(this.parcelIdentifyEnabled || this.parcelTimelineSource?.displayMode === 'roi'){
+                this.parcelTimelineLoading = false
+                this.parcelTimelineNotice = `${this.getCurrentParcelDate().slice(0,4)}年 · 请先框选区域`
+            }
             this.parcelIdentifyNotice = '请在地图上拖出一个矩形'
         },
 
         refreshParcelIdentification:async function(){
             this.clearParcelIdentification()
-            if(!this.parcelIdentifyEnabled || !this.parcelRoiExtent || !this.map) return
+            if(!this.parcelIdentifyEnabled || !this.parcelRoiExtent || !this.map || (this.parcelPageMode && this.parcelPageMode !== 'identify')) return
+            this.removeParcelTimelineLayer()
+            const date = this.getCurrentParcelDate()
+            const year = date.slice(0,4)
+            const layerName = this.getCurrentParcelLayerName()
+            if(!layerName){
+                this.parcelIdentifyNotice = '当前年度地块未接入'
+                this.parcelTimelineNotice = `${year}年地块未接入`
+                return
+            }
             const requestId = this.parcelIdentifyReqId
             const controller = new AbortController()
             this.parcelIdentifyAbort = markRaw(controller)
-            const isCurrent = () => requestId === this.parcelIdentifyReqId && !controller.signal.aborted
+            const isCurrent = () => requestId === this.parcelIdentifyReqId && !controller.signal.aborted && date === this.getCurrentParcelDate()
             const projection = this.map.getView().getProjection()
             const extent = transformExtent(this.parcelRoiExtent, projection, 'EPSG:4326')
             this.parcelIdentifyPhase = 'loading'
-            this.parcelIdentifyNotice = '正在加载选区地块…'
+            this.parcelTimelineLoading = true
+            this.parcelTimelineNotice = `${year}年 · 正在识别中…`
+            this.parcelIdentifyNotice = `${year}年选区地块正在识别中…`
             try{
-                const request = async (bounds, limit) => {
-                    if(limit === 160) this.parcelIdentifyNotice = '正在分区加载大范围地块…'
+                // 展示已有成果：后台准备完整选区，前台统一播放点→边界→面的短动画。
+                if(getParcelAnimationTiming(0, extent).points === 0 && this.parcelTimelineSource?.dataVersion === 'optimized-20261011'){
+                    const fastSource = new VectorSource()
+                    let revealing = false, revealPhase = 'lines'
+                    const outlineStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.85)',width:0.8})})
+                    const faceStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.85)',width:0.8}),
+                        fill:new Fill({color:'rgba(255,35,25,0)'})})
+                    const fastLayer = new VectorLayer({source:fastSource,zIndex:65,
+                        style:() => revealPhase === 'lines' ? outlineStyle : faceStyle})
+                    fastLayer.setExtent(this.parcelRoiExtent)
+                    const removePoints = () => {
+                        if(this.parcelIdentifySeedLayer) this.map.removeLayer(this.parcelIdentifySeedLayer)
+                        this.parcelIdentifySeedLayer = null
+                    }
+                    // 点位按屏幕间距去重，整幅选区一起出现，避免密集点符号铺满农田。
+                    loadParcelPreviewPoints(layerName, extent, {signal:controller.signal,baseUrl:process.env.BASE_URL || '/'})
+                        .then(points => {
+                            if(!isCurrent() || revealing || !points.length) return
+                            const geometry = new MultiPoint(points).transform('EPSG:4326',projection)
+                            const occupied = new Set()
+                            const visible = geometry.getCoordinates().filter(point => {
+                                const pixel = this.map.getPixelFromCoordinate(point)
+                                if(!pixel) return false
+                                const key = `${Math.floor(pixel[0]/6)},${Math.floor(pixel[1]/6)}`
+                                if(occupied.has(key)) return false
+                                occupied.add(key);return true
+                            })
+                            geometry.setCoordinates(visible)
+                            const seeds = new VectorLayer({source:new VectorSource({features:[new Feature(geometry)]}),zIndex:66,
+                                style:new Style({image:new Circle({radius:0.9,fill:new Fill({color:'rgba(255,100,80,0.7)'})})})})
+                            seeds.setExtent(this.parcelRoiExtent)
+                            this.parcelIdentifySeedLayer = markRaw(seeds)
+                            this.map.addLayer(seeds)
+                            this.parcelIdentifyPhase = 'points'
+                            this.parcelIdentifyNotice = '正在识别中…'
+                        }).catch(() => {})
+                    try{
+                        const format = new GeoJSON()
+                        const result = await loadFastParcelFeatures(layerName, extent, {
+                            signal:controller.signal,baseUrl:process.env.BASE_URL || '/',version:this.parcelTimelineSource.dataVersion,
+                            onTile:async page => {
+                                // 所有空间块只存入尚未上图的 source，加载顺序不参与展示动画。
+                                for(let offset=0;offset<page.features.length;offset+=1000){
+                                    if(!isCurrent()) return
+                                    const batch = format.readFeatures({type:'FeatureCollection',features:page.features.slice(offset,offset+1000)},
+                                        {dataProjection:'EPSG:4326',featureProjection:projection})
+                                        .filter(feature => feature.getGeometry().intersectsExtent(this.parcelRoiExtent))
+                                    if(batch.length){
+                                        fastSource.addFeatures(batch)
+                                    }
+                                    await new Promise(resolve => setTimeout(resolve,0))
+                                }
+                            }
+                        })
+                        if(!isCurrent()) return
+                        if(result?.complete){
+                            const count = fastSource.getFeatures().length
+                            revealing = true
+                            removePoints()
+                            this.parcelIdentifyYear = year
+                            this.parcelIdentifyLayer = markRaw(fastLayer)
+                            fastLayer.setOpacity(0.2)
+                            this.map.addLayer(fastLayer)
+                            this.parcelIdentifyPhase = 'lines'
+                            this.parcelIdentifyNotice = '正在识别中…'
+                            const started = Date.now(), duration = 900
+                            this.parcelIdentifyTimer = setInterval(() => {
+                                if(!isCurrent()) return
+                                const elapsed = Date.now()-started
+                                this.parcelIdentifyProgress = Math.min(100,elapsed/duration*100)
+                                fastLayer.setOpacity(Math.min(1,0.2+elapsed/350*0.8))
+                                if(elapsed >= 350){
+                                    revealPhase = 'faces'
+                                    faceStyle.getFill().setColor(`rgba(255,35,25,${0.18*Math.min(1,(elapsed-350)/550)})`)
+                                    this.parcelIdentifyPhase = 'faces'
+                                }
+                                if(elapsed >= duration){
+                                    this.parcelIdentifyCount = count
+                                    this.parcelIdentifyPhase = 'done'
+                                    this.parcelIdentifyNotice = `已识别 ${count.toLocaleString()} 个地块`
+                                    this.parcelTimelineNotice = `${year}年 · ${this.parcelIdentifyNotice}`
+                                    clearInterval(this.parcelIdentifyTimer)
+                                    this.parcelIdentifyTimer = null
+                                }
+                                fastLayer.changed()
+                            },60)
+                            return
+                        }
+                    }catch(error){
+                        if(!isCurrent()) return
+                        console.warn('快速地块数据暂不可用，改用在线成果',error)
+                    }
+                    // 缺少同版本压缩数据时继续使用在线成果，不保留不完整快速结果。
+                    revealing = true
+                    removePoints()
+                    this.map.removeLayer(fastLayer)
+                    this.parcelIdentifyLayer = null
+                }
+                // 在线备用来源同样先准备完整选区，禁止把分页返回过程当作动画。
+                const format = new GeoJSON()
+                let previewSource = null, progressive = null
+                const onPage = async (page, total) => {
+                    if(!isCurrent()) return
+                    if(progressive === null) progressive = getParcelAnimationTiming(Number.isFinite(total) ? total : page.features.length, extent).lines < 6000
+                    if(!progressive) return
+                    const batch = format.readFeatures(page, {dataProjection:'EPSG:4326', featureProjection:projection})
+                        .filter(feature => ['Polygon', 'MultiPolygon'].includes(feature.getGeometry()?.getType()))
+                    if(batch.length){
+                        if(!previewSource) previewSource = new VectorSource()
+                        previewSource.addFeatures(batch)
+                    }
+                    await new Promise(resolve => setTimeout(resolve,0))
+                }
+                const request = async (bounds, limit, startIndex = 0) => {
                     return fetchRecognitionFeatures(`${this.baseUrl}/geoserver/agri-agent/ows`, {
-                            service:'WFS', version:'1.0.0', request:'GetFeature',
-                            typeName:PARCEL_LAYER_NAME, outputFormat:'application/json',
-                            srsName:'EPSG:4326', maxFeatures:limit,
-                            bbox:bounds.join(',') + ',EPSG:4326'
+                            service:'WFS', version:'2.0.0', request:'GetFeature',
+                            typeNames:layerName, outputFormat:'application/json',
+                            srsName:'urn:ogc:def:crs:OGC:1.3:CRS84', count:limit, startIndex,
+                            bbox:bounds.join(',') + ',urn:ogc:def:crs:OGC:1.3:CRS84'
                     }, {signal:controller.signal})
                 }
-                const result = await loadParcelAnimationFeatures(request, extent, isCurrent, PARCEL_MAX_FEATURES)
+                const result = await loadParcelAnimationFeatures(request, extent, isCurrent, PARCEL_MAX_FEATURES, onPage)
                 if(!result || !isCurrent()) return
-                const {data, overview} = result
-                this.parcelIdentifyOverview = overview
-                const features = new GeoJSON().readFeatures(data, {dataProjection:'EPSG:4326', featureProjection:projection})
+                const {data} = result
+                const features = previewSource ? previewSource.getFeatures() : format.readFeatures(data, {dataProjection:'EPSG:4326', featureProjection:projection})
                     .filter(feature => ['Polygon', 'MultiPolygon'].includes(feature.getGeometry()?.getType()))
                 if(!features.length){
-                    this.parcelIdentifyNotice = '选区内没有农田地块，请移动选区或重新框选'
+                    this.parcelIdentifyNotice = `${year}年选区内没有农田地块，请移动选区或重新框选`
+                    this.parcelTimelineNotice = `${year}年 · 选区内无地块`
                     return
                 }
-                // 完整边界用于连线，动画标记按屏幕空间抽稀，避免密集圆点遮挡地块。
+                this.parcelIdentifyYear = year
+                this.parcelTimelineNotice = `${year}年 · 正在识别中…`
                 const records = new Map()
+                const timing = getParcelAnimationTiming(features.length, extent)
+                const accelerated = timing.lines < 6000
+                if(accelerated){
+                    // 全部地块直接共用完整边界样式，不创建逐段路径和起点图形。
+                    const outlineStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.9)',width:1})})
+                    const faceStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.9)',width:1}),
+                        fill:new Fill({color:'rgba(255,35,25,0)'})})
+                    let filling = false
+                    const layer = new VectorLayer({source:previewSource || new VectorSource({features}),zIndex:65})
+                    layer.setStyle(() => filling ? faceStyle : outlineStyle)
+                    layer.setExtent(this.parcelRoiExtent)
+                    this.parcelIdentifyLayer = markRaw(layer)
+                    this.agriParcelLayer.setVisible(false)
+                    this.map.addLayer(layer)
+                    this.parcelIdentifyPhase = 'lines'
+                    this.parcelIdentifyNotice = '正在识别中… · 识别边界连线'
+                    const started = Date.now(), total = timing.lines + timing.faces
+                    this.parcelIdentifyTimer = setInterval(() => {
+                        if(!isCurrent()) return
+                        const elapsed = Math.max(0,Date.now() - started)
+                        this.parcelIdentifyProgress = Math.min(100,elapsed / total * 100)
+                        if(elapsed >= timing.lines){
+                            filling = true
+                            const opacity = Math.min(1,(elapsed - timing.lines) / timing.faces)
+                            faceStyle.getFill().setColor(`rgba(255,35,25,${0.36 * opacity})`)
+                            this.parcelIdentifyPhase = 'faces'
+                            this.parcelIdentifyNotice = '正在识别中… · 识别地块面'
+                        }
+                        if(elapsed >= total){
+                            this.parcelIdentifyCount = features.length
+                            this.parcelIdentifyPhase = 'done'
+                            this.parcelIdentifyNotice = `已识别 ${this.parcelIdentifyCount.toLocaleString()} 个地块`
+                            this.parcelTimelineNotice = `${year}年 · ${this.parcelIdentifyNotice}`
+                            clearInterval(this.parcelIdentifyTimer)
+                            this.parcelIdentifyTimer = null
+                        }
+                        layer.changed()
+                    },100)
+                    return
+                }
+                // 小范围保留原有点→生长边界→面动画。
                 for(const feature of features){
                     const geometry = feature.getGeometry()
                     const polygons = geometry.getType() === 'Polygon' ? [geometry.getCoordinates()] : geometry.getCoordinates()
-                    const rings = polygons.flat().filter(ring => ring.length >= 2)
-                    const paths = rings.map(ring => {
-                        const lengths = [0]
-                        for(let i=1;i<ring.length;i++) lengths.push(lengths[i-1]+Math.hypot(ring[i][0]-ring[i-1][0],ring[i][1]-ring[i-1][1]))
-                        return {ring,lengths,total:lengths[lengths.length-1]}
-                    })
-                    const bounds = geometry.getExtent()
-                    const position = Math.max(0,Math.min(1,((bounds[0]+bounds[2])/2-this.parcelRoiExtent[0])/(this.parcelRoiExtent[2]-this.parcelRoiExtent[0])))
-                    records.set(feature, {rings, paths, position})
-                }
-                const refreshMarkers = () => {
-                    const size = this.map.getSize()
-                    const pixels = this.extentToRing(this.parcelRoiExtent).map(coordinate => this.map.getPixelFromCoordinate(coordinate))
-                    const bounds = [Math.max(0,Math.min(...pixels.map(p => p[0]))),Math.max(0,Math.min(...pixels.map(p => p[1]))),
-                        Math.min(size[0],Math.max(...pixels.map(p => p[0]))),Math.min(size[1],Math.max(...pixels.map(p => p[1])))]
-                    const markers = sampleParcelMarkers(records, coordinate => this.map.getPixelFromCoordinate(coordinate), bounds)
-                    records.forEach((record, feature) => {
-                        const marker = markers.get(feature)
-                        record.pointStages = Array.from({length:9}, (_,stage) => new MultiPoint(marker.points.slice(0,Math.ceil(marker.points.length*stage/8))))
-                        record.showTip = marker.showTip
-                        record.tipPath = marker.tipPath
+                    const paths = prepareParcelPaths(polygons.flat().filter(ring => ring.length >= 4), this.parcelRoiExtent)
+                    const seeds = paths.map(path => path.ring[0])
+                    records.set(feature, {
+                        paths, seeds: new MultiPoint(seeds),
+                        lines: new MultiLineString([]), tips: new MultiPoint(seeds), lastProgress: -1
                     })
                 }
-                refreshMarkers()
-                let phase = 'points'
-                let progress = 0
-                let pointReveal = 0
-                let pointOpacity = 0
-                let fillProgress = 0
-                const pointStyle = new Style({image:new Circle({radius:2.3,
-                    fill:new Fill({color:'#ff5752'}), stroke:new Stroke({color:'#fff0e8',width:0.7})})})
+                let phase = 'points', progress = 0, fillProgress = 0
+                const dense = features.length > PARCEL_MAX_FEATURES
+                const pointStyle = new Style({geometry: feature => records.get(feature).seeds,
+                    image:new Circle({radius:dense ? 1.2 : 2.3,
+                        fill:new Fill({color:'#ff5752'}), stroke:new Stroke({color:'#fff0e8',width:0.7})})})
                 pointStyle.getImage().setOpacity(0)
-                const lineStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.85)',width:overview ? 1.9 : 1.4})})
-                const tipStyle = new Style({image:new Circle({radius:2.6,fill:new Fill({color:'#ffc0a9'}),stroke:new Stroke({color:'#ff6252',width:0.8})})})
-                const faceStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.9)',width:1}),fill:new Fill({color:'rgba(255,35,25,0.36)'})})
+                const lineStyle = new Style({geometry: feature => records.get(feature).lines,
+                    stroke:new Stroke({color:'rgba(255,65,55,0.85)',width:1.4})})
+                const tipStyle = new Style({geometry: feature => records.get(feature).tips,
+                    image:new Circle({radius:dense ? 1.5 : 2.8,
+                        fill:new Fill({color:'#ffc0a9'}),stroke:new Stroke({color:'#ff6252',width:0.8})})})
+                const faceStyle = new Style({stroke:new Stroke({color:'rgba(255,65,55,0.9)',width:1}),
+                    fill:new Fill({color:'rgba(255,35,25,0)'})})
                 const layer = new VectorLayer({source:new VectorSource({features}),zIndex:65,
                     style:feature => {
                         const record = records.get(feature)
-                        if(phase === 'points'){
-                            pointStyle.setGeometry(record.pointStages[Math.min(8,Math.floor(pointReveal*8))])
-                            return pointStyle
-                        }
+                        if(phase === 'points') return pointStyle
                         if(phase === 'lines'){
-                            const localProgress = overview ? parcelSweepProgress(progress,record.position) : progress
-                            if(localProgress === 0) return pointOpacity > 0 ? (pointStyle.setGeometry(record.pointStages[8]),pointStyle) : []
-                            const lines = record.paths.map(({ring,lengths,total}) => {
-                                const distance = localProgress * total
-                                let index = 0
-                                while(index < ring.length-2 && lengths[index+1] < distance) index++
-                                const a = ring[index], b = ring[index+1]
-                                const segment = lengths[index+1]-lengths[index]
-                                const fraction = segment ? Math.min(1,(distance-lengths[index])/segment) : 1
-                                return [...ring.slice(0,index+1),[a[0]+(b[0]-a[0])*fraction,a[1]+(b[1]-a[1])*fraction]]
-                            })
-                            lineStyle.setGeometry(new MultiLineString(lines))
-                            const styles = [lineStyle]
-                            if(pointOpacity > 0){
-                                pointStyle.setGeometry(record.pointStages[8])
-                                styles.push(pointStyle)
+                            if(record.lastProgress !== progress){
+                                const lines = traceParcelPaths(record.paths, progress)
+                                record.lines.setCoordinates(lines)
+                                if(!dense) record.tips.setCoordinates(lines.map(line => line[line.length - 1]))
+                                record.lastProgress = progress
                             }
-                            if(record.showTip && localProgress > 0 && localProgress < 0.98){
-                                const line = lines[record.paths.indexOf(record.tipPath)]
-                                tipStyle.setGeometry(new Point(line[line.length-1]))
-                                styles.push(tipStyle)
-                            }
-                            return styles
+                            // 密集选区仅绘制生长边界，减少重复点符号和逐帧图形分配。
+                            return progress < 1 && !dense ? [lineStyle, pointStyle, tipStyle] : lineStyle
                         }
-                        const localFill = overview ? parcelSweepProgress(fillProgress,record.position) : fillProgress
-                        faceStyle.getFill().setColor(`rgba(255,35,25,${0.36*localFill})`)
                         return faceStyle
                     }})
-                this.parcelIdentifyViewKey = markRaw(this.map.on('moveend', () => {
-                    if(requestId !== this.parcelIdentifyReqId || phase === 'faces') return
-                    refreshMarkers()
-                    layer.changed()
-                }))
                 layer.setExtent(this.parcelRoiExtent)
                 this.parcelIdentifyLayer = markRaw(layer)
-                this.parcelIdentifyOriginalVisible = this.agriParcelLayer.getVisible()
                 this.agriParcelLayer.setVisible(false)
                 this.map.addLayer(layer)
-                if(overview){
-                    const roi = this.parcelRoiExtent.slice(), saved = new WeakSet()
-                    const renderRing = event => this.extentToRing(roi).map(coordinate => getRenderPixel(event,this.map.getPixelFromCoordinate(coordinate)))
-                    const path = (context, pixels) => {
-                        context.beginPath()
-                        pixels.forEach((pixel,index) => index ? context.lineTo(...pixel) : context.moveTo(...pixel))
-                        context.closePath()
-                    }
-                    this.parcelIdentifyRenderKeys = markRaw([
-                        this.agriParcelLayer.on('prerender',event => {
-                            const context = event.context
-                            if(!context?.save || phase !== 'faces') return
-                            context.save();saved.add(context)
-                            const reveal = roi.slice();reveal[2] = roi[0]+(roi[2]-roi[0])*fillProgress
-                            path(context,this.extentToRing(reveal).map(coordinate => getRenderPixel(event,this.map.getPixelFromCoordinate(coordinate))))
-                            context.clip()
-                            context.globalAlpha *= Math.min(1,fillProgress*4)
-                        }),
-                        this.agriParcelLayer.on('postrender',event => {if(saved.has(event.context)){event.context.restore();saved.delete(event.context)}}),
-                        layer.on('postrender',event => {
-                            const context = event.context
-                            if(!context?.save || !['lines','faces'].includes(phase)) return
-                            const sweep = phase === 'lines' ? progress : fillProgress
-                            if(sweep <= 0 || sweep >= 1) return
-                            const x = roi[0]+(roi[2]-roi[0])*sweep, halfWidth = (roi[2]-roi[0])*.012
-                            context.save();path(context,renderRing(event));context.clip()
-                            const band = [Math.max(roi[0],x-halfWidth),roi[1],Math.min(roi[2],x+halfWidth),roi[3]]
-                            path(context,this.extentToRing(band).map(coordinate => getRenderPixel(event,this.map.getPixelFromCoordinate(coordinate))))
-                            context.fillStyle = 'rgba(255,170,140,0.12)';context.fill()
-                            const top = getRenderPixel(event,this.map.getPixelFromCoordinate([x,roi[3]]))
-                            const bottom = getRenderPixel(event,this.map.getPixelFromCoordinate([x,roi[1]]))
-                            context.beginPath();context.moveTo(...top);context.lineTo(...bottom)
-                            context.strokeStyle = 'rgba(255,185,150,0.85)';context.lineWidth = event.frameState.pixelRatio*1.5;context.stroke();context.restore()
-                        })
-                    ])
-                }
-                this.parcelIdentifyCount = features.length
                 this.parcelIdentifyPhase = 'points'
-                this.parcelIdentifyNotice = '正在显示地块边界点…'
-                const started = Date.now()
-                const pointDuration = overview ? 2500 : 2000
-                const lineDuration = overview ? 7000 : 5000
-                const faceStart = pointDuration+lineDuration+1000
-                const faceDuration = overview ? 3500 : 2000
-                const totalDuration = faceStart+faceDuration
+                this.parcelIdentifyNotice = '正在识别中… · 识别边界点'
+                const {points:pointDuration, lines:lineDuration, closed:closedDuration, faces:faceDuration} = timing
+                const faceStart = pointDuration + lineDuration + closedDuration
+                const totalDuration = faceStart + faceDuration
+                let elapsed = 0, lastTick = Date.now()
                 this.parcelIdentifyTimer = setInterval(() => {
                     if(requestId !== this.parcelIdentifyReqId) return
-                    const elapsed = Date.now() - started
-                    // 大范围分区依次连线，并扫描显示完整 WMS 地块面。
-                    this.parcelIdentifyProgress = Math.min(100,elapsed/totalDuration*100)
+                    const now = Date.now()
+                    elapsed += Math.min(300, Math.max(0, now - lastTick))
+                    lastTick = now
+                    this.parcelIdentifyProgress = Math.min(100,elapsed / totalDuration * 100)
                     if(elapsed < pointDuration){
-                        pointReveal = Math.min(1,elapsed/1300)
-                        pointOpacity = Math.min(0.85,elapsed/700)
-                        pointStyle.getImage().setRadius(2.3 + Math.sin(elapsed/240)*0.2)
+                        pointStyle.getImage().setOpacity(Math.min(0.9,elapsed / (pointDuration * 0.6)))
                     }else if(elapsed < faceStart){
                         phase = 'lines'
-                        progress = Math.min(1,(elapsed-pointDuration)/lineDuration)
-                        pointOpacity = Math.max(0,0.85*(1-(elapsed-pointDuration)/1600))
-                        tipStyle.getImage().setOpacity(Math.min(0.9,(1-progress)*5))
+                        progress = Math.min(1,(elapsed - pointDuration) / lineDuration)
+                        pointStyle.getImage().setOpacity(0.55)
                         this.parcelIdentifyPhase = 'lines'
-                        this.parcelIdentifyNotice = progress < 1 ? (overview ? '正在分区连接地块边界…' : '正在逐段连接地块边界…') : '边界已闭合，正在生成地块面…'
+                        this.parcelIdentifyNotice = progress < 1 ? '正在识别中… · 识别边界连线' : '正在识别中… · 边界已闭合'
                     }else{
                         phase = 'faces'
-                        fillProgress = Math.min(1,(elapsed-faceStart)/faceDuration)
+                        fillProgress = Math.min(1,(elapsed - faceStart) / faceDuration)
+                        faceStyle.getFill().setColor(`rgba(255,35,25,${0.36 * fillProgress})`)
                         this.parcelIdentifyPhase = 'faces'
-                        this.parcelIdentifyNotice = overview ? '正在逐步显示选区完整地块…' : '正在填充地块面…'
-                        if(overview && this.parcelIdentifyOriginalVisible) this.agriParcelLayer.setVisible(true)
+                        this.parcelIdentifyNotice = '正在识别中… · 识别地块面'
                         if(elapsed >= totalDuration){
+                            this.parcelIdentifyCount = features.length
                             this.parcelIdentifyPhase = 'done'
-                            this.parcelIdentifyNotice = overview ? '大范围演示完成，已显示选区完整地块' : '识别完成，可拖动边框查看其他区域'
-                            if(overview){
-                                unByKey(this.parcelIdentifyRenderKeys)
-                                this.parcelIdentifyRenderKeys = null
-                                this.map.removeLayer(layer)
-                                this.parcelIdentifyLayer = null
-                                this.agriParcelLayer.setVisible(this.parcelIdentifyOriginalVisible)
-                            }
+                            this.parcelIdentifyNotice = `已识别 ${this.parcelIdentifyCount.toLocaleString()} 个地块`
+                            this.parcelTimelineNotice = `${year}年 · ${this.parcelIdentifyNotice}`
                             clearInterval(this.parcelIdentifyTimer)
                             this.parcelIdentifyTimer = null
-                            if(this.parcelIdentifyViewKey) unByKey(this.parcelIdentifyViewKey)
-                            this.parcelIdentifyViewKey = null
                         }
                     }
-                    pointStyle.getImage().setOpacity(pointOpacity)
                     layer.changed()
-                    if(overview && phase === 'faces') this.agriParcelLayer.changed()
                 },60)
             }catch(error){
                 if(requestId !== this.parcelIdentifyReqId) return
                 controller.abort()
-                this.parcelIdentifyNotice = '地块数据加载失败，请重新框选重试'
-                console.warn('地块动态识别失败',error)
+                if(this.parcelIdentifyTimer) clearInterval(this.parcelIdentifyTimer)
+                this.parcelIdentifyTimer = null
+                if(this.parcelIdentifySeedLayer) this.map.removeLayer(this.parcelIdentifySeedLayer)
+                this.parcelIdentifySeedLayer = null
+                // 部分分页失败时移除临时边界，避免把不完整结果当成识别成功。
+                if(this.parcelIdentifyLayer) this.map.removeLayer(this.parcelIdentifyLayer)
+                this.parcelIdentifyLayer = null
+                this.parcelIdentifyPhase = 'idle'
+                this.parcelIdentifyProgress = 0
+                this.parcelIdentifyNotice = `${year}年地块识别失败，请重新框选重试`
+                this.parcelTimelineNotice = `${year}年地块暂不可用，请检查数据服务`
+                console.warn('地块成果加载失败',error)
             }finally{
                 if(this.parcelIdentifyAbort === controller) this.parcelIdentifyAbort = null
+                if(requestId === this.parcelIdentifyReqId) this.parcelTimelineLoading = false
                 if(requestId === this.parcelIdentifyReqId && this.parcelIdentifyPhase === 'loading') this.parcelIdentifyPhase = 'idle'
             }
         },
@@ -2333,9 +3169,9 @@ const useMapStore =  defineStore('map',{
             if(this.map && this.map.removeLayer){
                 Object.keys(this.temporalLayerInstances).forEach(id => {
                     const layer = this.temporalLayerInstances[id]
-                    if(layer){
-                        try{ this.map.removeLayer(layer) }catch(e){console.warn(e)}
-                    }
+                    if(layer) try{ this.removeTemporalLayerInstance(id, layer) }catch(e){console.warn(e)}
+                    const previous = this.temporalPendingPreviousLayers[id]
+                    if(previous && previous !== layer) try{ this.removeTemporalLayerInstance(id, previous) }catch(e){console.warn(e)}
                 })
                 Object.values(this.temporalAnnotationLayers).forEach(layer => {
                     try{ this.map.removeLayer(layer) }catch(e){console.warn(e)}
@@ -2346,8 +3182,10 @@ const useMapStore =  defineStore('map',{
             Object.values(this.temporalAnimationTimers).forEach(timer => clearInterval(timer))
             this.temporalAnimationTimers = {}
             this.temporalLayerInstances = {}
+            this.temporalPendingPreviousLayers = {}
             this.temporalAnnotationLayers = {}
             this.temporalLayerStatus = {}
+            this.temporalImageDates = {}
             this.temporalNamedRiverFeatures = []
             this.temporalHoverInfo = null
         },
@@ -3039,6 +3877,7 @@ const useMapStore =  defineStore('map',{
             if(!this.map || !this.map.getView) return
             // 已经框选过就先撤掉遮罩，否则地图挪走后整个画面都被遮住
             if(this.parcelRoiState !== 'idle') this.clearParcelRoi(false)
+            if(this.parcelPageMode === 'identify') this.startParcelRoiDraw()
 
             this.parcelRegionId = id || PARCEL_REGION_ALL_ID
             const view = this.map.getView()
@@ -3576,31 +4415,18 @@ addBasinLabelLayer: function() {
                 const requestId = ++hoverRequestId
                 const featureByLayer = {}
                 map.forEachFeatureAtPixel(event.pixel, (feature, layer) => {
-                    const id = Object.keys(this.temporalLayerInstances).find(key => this.temporalLayerInstances[key] === layer)
+                    const id = Object.keys(this.temporalLayerInstances).find(key =>
+                        this.temporalLayerInstances[key] === layer || this.temporalAnnotationLayers[key] === layer
+                    )
                     if(id && activeIds.includes(id) && !featureByLayer[id]) featureByLayer[id] = feature
                 }, {
                     hitTolerance: 5,
-                    layerFilter: layer => activeIds.some(id => !['rivers','temperature','precipitation'].includes(id) && this.temporalLayerInstances[id] === layer)
+                    layerFilter: layer => activeIds.some(id =>
+                        !['temperature','precipitation'].includes(id) &&
+                        (this.temporalLayerInstances[id] === layer || this.temporalAnnotationLayers[id] === layer)
+                    )
                 })
-                // 河流不参加通用图层命中检测；只在3条命名河流中寻找距指针最近的一条。
-                if(activeIds.includes('rivers') && this.temporalNamedRiverFeatures.length){
-                    let closestRiver = null
-                    let closestDistanceSquared = 49
-                    this.temporalNamedRiverFeatures.forEach(feature => {
-                        const closestCoordinate = feature.getGeometry()?.getClosestPoint?.(event.coordinate)
-                        if(!closestCoordinate) return
-                        const closestPixel = map.getPixelFromCoordinate(closestCoordinate)
-                        const dx = closestPixel[0] - event.pixel[0]
-                        const dy = closestPixel[1] - event.pixel[1]
-                        const distanceSquared = dx * dx + dy * dy
-                        if(distanceSquared <= closestDistanceSquared){
-                            closestDistanceSquared = distanceSquared
-                            closestRiver = feature
-                        }
-                    })
-                    if(closestRiver) featureByLayer.rivers = closestRiver
-                }
-                // PNG仅负责显示；鼠标数值从精简规则网格读取，不加载数千个矢量多边形。
+                // 气温和降水数值均从已加载的规则网格读取；温度网格对应当前日期。
                 activeIds.forEach(id => {
                     if(!['temperature','precipitation'].includes(id)) return
                     const layer = this.temporalLayerInstances[id]
@@ -3611,7 +4437,7 @@ addBasinLabelLayer: function() {
                     if(column < 0 || row < 0 || column >= grid.width || row >= grid.height) return
                     const value = grid.values[row * grid.width + column]
                     if(value === null || value === undefined) return
-                    featureByLayer[id] = {getProperties:() => ({value, units:grid.units, year:grid.year})}
+                    featureByLayer[id] = {getProperties:() => ({value, units:grid.units, year:grid.year, date:grid.date, month:grid.month})}
                 })
                 // 隐藏地图色块时仍从已加载的矢量数据源读取鼠标位置对应的数据，保证提示值不受显示状态影响。
                 activeIds.forEach(id => {
@@ -3626,7 +4452,7 @@ addBasinLabelLayer: function() {
                 })
                 const items = []
                 const labels = {
-                    temperature:'气温', precipitation:'降水量', rivers:'河流', lakes:'湖泊',
+                    temperature:'气温', precipitation:'年累计降水', rivers:'河流', lakes:'湖泊',
                     boundaries:'行政边界',
                     country_border:'国家边界', province_border:'州界'
                 }
@@ -3644,18 +4470,25 @@ addBasinLabelLayer: function() {
                         const value = Number(get('value'))
                         const rawUnit = get('units') || (id === 'temperature' ? '°C' : 'mm')
                         const unit = rawUnit === 'degC' ? '°C' : rawUnit
+                        const dataDate = get('date')
                         const dataYear = get('year') || this.temporalYear
-                        items.push({id, label:labels[id], value:`${Number.isFinite(value) ? value.toFixed(2) : '无数据'} ${unit} · ${dataYear}年`})
+                        const dataMonth = get('month')
+                        const period = dataMonth ? `${dataMonth.slice(0,4)}年${dataMonth.slice(4,6)}月` : dataDate || `${dataYear}年`
+                        items.push({id, label:labels[id], value:`${Number.isFinite(value) ? value.toFixed(2) : '无数据'} ${unit} · ${period}`})
                         return
                     }
                     let name = get('name_zh') || get('NAME_ZH') || get('name_zht') || get('NAME_ZHT') || get('name_en') || get('NAME_EN') || get('name') || get('NAME') || get('label') || get('LABEL')
                     if(name && translated[name]) name = translated[name]
+                    if(id === 'rivers'){
+                        name = name || get('__riverNameZh')
+                        if(name) items.push({id, label:labels[id], value:name})
+                        return
+                    }
                     if(id === 'boundaries' || id === 'country_border' || id === 'province_border'){
                         const leftName = get('NAME_L') || get('ADM0_LEFT')
                         const rightName = get('NAME_R') || get('ADM0_RIGHT')
                         name = leftName && rightName ? `${leftName} / ${rightName}` : name || leftName || rightName || get('ADM0_NAME') || (id === 'province_border' ? '州界' : '国界')
                     }
-                    if(id === 'rivers' && !name) return
                     items.push({id, label:labels[id], value:name || '名称未提供'})
                 })
                 const rasterIds = activeIds.filter(id => id === 'elevation' || id === 'slope')
@@ -3670,7 +4503,9 @@ addBasinLabelLayer: function() {
                     this.temporalHoverInfo = null
                     return
                 }
-                const coordinateLabel = `${Number(event.coordinate[0]).toFixed(4)}°E, ${Number(event.coordinate[1]).toFixed(4)}°N`
+                const weatherOrder = {temperature:0, precipitation:1}
+                items.sort((a,b) => (weatherOrder[a.id] ?? 2) - (weatherOrder[b.id] ?? 2))
+                const coordinateLabel = items.length === 1 && items[0].id === 'rivers' ? '' : `${Number(event.coordinate[0]).toFixed(4)}°E, ${Number(event.coordinate[1]).toFixed(4)}°N`
                 this.temporalHoverInfo = { ...position, title:'已勾选图层信息', coordinateLabel, items, layerId:items.map(item => item.id).join(',') }
                 if(rasterItemIds.length){
                     Promise.all(rasterItemIds.map(id => this.getTemporalRasterValue(id, event.coordinate))).then(values => {

@@ -3,12 +3,12 @@
     <!-- 这一条既是标题也是拖动窗口的把手 -->
     <div class="dt-bar" @pointerdown="startDrag">
       <span class="dt-grip" aria-hidden="true"></span>
-      <span class="dt-title">日期时间轴</span>
+      <span class="dt-title">{{ yearOnly ? '年份时间轴' : '日期时间轴' }}</span>
     </div>
     <div class="dt-body">
       <button
         class="dt-play"
-        :disabled="parcelTimelineDates.length < 2"
+        :disabled="timelineEntries.length < 2"
         :title="parcelTimelinePlaying ? '暂停' : '播放'"
         @click="togglePlay"
       >
@@ -20,13 +20,14 @@
         min="0"
         :max="maxIndex"
         step="1"
-        :value="parcelTimelineIndex"
-        :style="{ '--timeline-progress': (maxIndex ? parcelTimelineIndex / maxIndex * 100 : 0) + '%' }"
-        aria-label="选择日期"
-        :disabled="parcelTimelineDates.length === 0"
+        :value="selectedIndex"
+        :style="{ '--timeline-progress': (maxIndex ? selectedIndex / maxIndex * 100 : 0) + '%' }"
+        :aria-label="yearOnly ? '选择年份' : '选择日期'"
+        :disabled="timelineEntries.length === 0"
         @input="onDrag"
       >
       <input
+        v-if="!yearOnly"
         class="dt-date"
         type="date"
         :min="firstDate"
@@ -36,9 +37,19 @@
         @change="onPickDate"
       >
     </div>
-    <div class="dt-ticks" ref="ticksRef">
-      <span v-for="tick in ticks" :key="tick.label" :style="{ left: tick.left }">{{ tick.label }}</span>
+    <div class="dt-ticks" :class="{ 'year-only': yearOnly }" ref="ticksRef">
+      <template v-if="yearOnly">
+        <span
+          v-for="(entry, index) in timelineEntries"
+          :key="entry.label"
+          :class="{ active: index === selectedIndex }"
+        >{{ entry.label }}</span>
+      </template>
+      <template v-else>
+        <span v-for="tick in ticks" :key="tick.label" :style="{ left: tick.left }">{{ tick.label }}</span>
+      </template>
     </div>
+    <p v-if="!yearOnly && timelineNotice" class="dt-status" role="status" aria-live="polite">{{ timelineNotice }}</p>
   </div>
 </template>
 
@@ -49,16 +60,38 @@ import useMapStore from '@/stores/map'
 import { usePanelDrag } from '@/composables/usePanelDrag'
 
 const store = useMapStore()
+/* global defineProps */
+const props = defineProps({ yearOnly: { type: Boolean, default: false } })
 const {
   parcelTimelineDates,
-  parcelTimelineIndex,
-  parcelTimelinePlaying
+  parcelTimelinePlaying,
+  parcelTimelineNotice
 } = storeToRefs(store)
 
-const maxIndex = computed(() => Math.max(parcelTimelineDates.value.length - 1, 0))
 const currentDate = computed(() => store.getCurrentParcelDate())
+const timelineNotice = computed(() => {
+  const notice = ['stats','pattern','change'].includes(store.parcelPageMode) ? store.parcelAnalysisNotice : parcelTimelineNotice.value
+  // 数量留在分析面板，时间轴不重复显示选区地块数。
+  return /[\d,，]+\s*个地块/.test(notice || '') ? '' : notice
+})
 
 const dateOf = item => (typeof item === 'string' ? item : (item && item.date) || '')
+// 年度模式每年只保留一个可选位置，拖动与播放都按年切换。
+const timelineEntries = computed(() => {
+  const seen = new Set()
+  return parcelTimelineDates.value.flatMap((item, index) => {
+    const date = dateOf(item)
+    const label = props.yearOnly ? date.slice(0, 4) : date
+    if (!label || (props.yearOnly && seen.has(label))) return []
+    seen.add(label)
+    return [{ index, label }]
+  })
+})
+const maxIndex = computed(() => Math.max(timelineEntries.value.length - 1, 0))
+const selectedIndex = computed(() => {
+  const label = props.yearOnly ? currentDate.value.slice(0, 4) : currentDate.value
+  return Math.max(0, timelineEntries.value.findIndex(entry => entry.label === label))
+})
 const firstDate = computed(() => dateOf(parcelTimelineDates.value[0]))
 const lastDate = computed(() => {
   const list = parcelTimelineDates.value
@@ -72,14 +105,14 @@ let ticksObserver = null
 
 // 年份刻度：取每年第一条日期所在的位置，位置不够时按间隔抽稀，避免年份挤在一起
 const ticks = computed(() => {
-  const list = parcelTimelineDates.value
+  const list = timelineEntries.value
   const total = list.length
   if (total === 0) return []
   const last = Math.max(total - 1, 1)
   const seen = new Set()
   const marks = []
   list.forEach((item, i) => {
-    const date = dateOf(item)
+    const date = item.label
     if (!date) return
     const year = date.slice(0, 4)
     if (seen.has(year)) return
@@ -95,25 +128,32 @@ const ticks = computed(() => {
   return step <= 1 ? marks : marks.filter((_, i) => i % step === 0)
 })
 
-const onDrag = evt => store.selectParcelTimelineIndex(evt.target.value)
+const onDrag = evt => {
+  const entry = timelineEntries.value[Number(evt.target.value)]
+  if (entry) store.selectParcelTimelineIndex(entry.index)
+}
 const onPickDate = evt => store.selectParcelTimelineDate(evt.target.value)
-const togglePlay = () => store.toggleParcelTimelinePlay()
+const togglePlay = () => store.toggleParcelTimelinePlay(props.yearOnly)
 
 // 窗口拖动
 const { panel, panelStyle, startDrag } = usePanelDrag()
 
 onMounted(() => {
+  store.stopParcelTimelinePlay()
   if (typeof ResizeObserver !== 'undefined' && ticksRef.value) {
     ticksObserver = new ResizeObserver(entries => {
       entries.forEach(entry => { ticksWidth.value = entry.contentRect.width })
     })
     ticksObserver.observe(ticksRef.value)
   }
-  // 日期列表由 store 里 getParcelTimelineDates 决定数据来源，已经加载过就不重复请求
-  if (parcelTimelineDates.value.length === 0) store.getParcelTimelineDates()
+  // 重新进入页面时读取年度映射；可视化默认展示全量地块，框选后展示选区识别。
+  store.getParcelTimelineDates()
 })
 
 onBeforeUnmount(() => {
+  store.stopParcelTimelinePlay()
+  store.parcelTimelineConfigReqId++
+  store.removeParcelTimelineLayer()
   if (ticksObserver) {
     ticksObserver.disconnect()
     ticksObserver = null
@@ -128,7 +168,7 @@ onBeforeUnmount(() => {
   bottom: 28px;
   transform: translateX(-50%);
   z-index: 1200;
-  width: min(580px, calc(100vw - 32px));
+  width: min(520px, calc(100vw - 32px));
   padding: 12px 18px 14px;
   box-sizing: border-box;
   background: linear-gradient(135deg, rgba(28, 48, 61, .78), rgba(14, 31, 43, .68));
@@ -156,14 +196,23 @@ onBeforeUnmount(() => {
 .dt-date { flex: 0 0 auto; width: 142px; box-sizing: border-box; height: 32px; padding: 4px 8px; font-family: inherit; font-size: 14px; color: #eaf6ff; color-scheme: dark; background: rgba(202, 227, 245, .09); border: 1px solid rgba(210, 234, 250, .23); border-radius: 8px; cursor: pointer; }
 .dt-date:hover { border-color: rgba(141, 210, 255, .6); }
 .dt-date:disabled { opacity: .5; cursor: default; }
+.dt-year { appearance: auto; color-scheme: light; }
+/* Windows 原生下拉菜单可能使用白底，不能继承输入框的浅色文字。 */
+.dt-year option { color: #16324a; background: #fff; }
+.dt-year option:checked { color: #fff; background: #2379e2; }
 .dt-play:focus-visible, .dt-range:focus-visible, .dt-date:focus-visible { outline: 2px solid #8cd8ff; outline-offset: 4px; }
 .dt-ticks { position: relative; height: 16px; margin: 8px 154px 0 44px; }
 .dt-ticks span { position: absolute; transform: translateX(-50%); font-size: 12px; white-space: nowrap; color: #b9d0df; }
+.dt-ticks.year-only { display: flex; justify-content: space-between; height: auto; margin: 8px 8px 0 52px; }
+.dt-ticks.year-only span { position: static; transform: none; }
+.dt-ticks.year-only span.active { color: #eaf6ff; font-weight: 600; }
+.dt-status { margin: 8px 0 0; color: #d4e7f6; font-size: 12px; }
 @media (max-width: 520px) {
   .dt-panel { padding: 10px 12px 12px; bottom: 18px; }
   .dt-title { font-size: 13px; }
   .dt-body { gap: 9px; }
   .dt-date { width: 124px; font-size: 12px; }
   .dt-ticks { margin-left: 41px; margin-right: 133px; }
+  .dt-ticks.year-only { margin-left: 49px; margin-right: 6px; }
 }
 </style>

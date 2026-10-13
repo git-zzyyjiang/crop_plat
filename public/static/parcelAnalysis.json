@@ -1,1 +1,13 @@
-{"years":{}}
+{
+  "defaultYear": 2024,
+  "dataVersion": "consistent-20261011",
+  "gridSizeMetres": 10000,
+  "countBreaks": [500, 1200, 2500, 4000],
+  "areaBreaksHa": [10, 30, 60, 100],
+  "qualityNote": "统计使用统一等面积投影；保留真实小地块候选，尚未完成人工样本精度验证。",
+  "years": {
+    "2024": {"layer": "agri-agent:beksh_parcel_2024", "gridLayer": "agri-agent:beksh_grid_2024"},
+    "2025": {"layer": "agri-agent:beksh_parcel_2025", "gridLayer": "agri-agent:beksh_grid_2025"},
+    "2026": {"layer": "agri-agent:beksh_parcel_2026", "gridLayer": "agri-agent:beksh_grid_2026"}
+  }
+}

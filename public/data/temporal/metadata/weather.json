@@ -22,183 +22,6 @@
   "available_through": "2026-09-30",
   "layers": [
     {
-      "file": "05_weather/2024/temperature_2024.tif",
-      "type": "raster",
-      "crs": "EPSG:4326",
-      "bounds": [
-        67.875,
-        39.875,
-        88.125,
-        50.125
-      ],
-      "width": 81,
-      "height": 41,
-      "resolution_degrees": [
-        0.25,
-        0.25
-      ],
-      "minimum": -13.073969841003418,
-      "maximum": 17.546306610107422,
-      "valid_pixels": 3321,
-      "nodata": -9999.0,
-      "palette": {
-        "stops": [
-          -10,
-          0,
-          10,
-          20,
-          30
-        ],
-        "colors": [
-          "#313695",
-          "#74add1",
-          "#ffffbf",
-          "#f46d43",
-          "#a50026"
-        ]
-      },
-      "web_preview": "05_weather/2024/temperature_2024_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
-      "year": 2024,
-      "units": "degC",
-      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
-      "period_start": "2024-01-01",
-      "period_end": "2024-12-31",
-      "days": 366,
-      "temporal_complete": true,
-      "aggregation": "daily mean averaged over all available UTC days",
-      "downscaling": "none",
-      "native_resolution_degrees": 0.25
-    },
-    {
-      "file": "05_weather/2025/temperature_2025.tif",
-      "type": "raster",
-      "crs": "EPSG:4326",
-      "bounds": [
-        67.875,
-        39.875,
-        88.125,
-        50.125
-      ],
-      "width": 81,
-      "height": 41,
-      "resolution_degrees": [
-        0.25,
-        0.25
-      ],
-      "minimum": -12.904012680053711,
-      "maximum": 18.221370697021484,
-      "valid_pixels": 3321,
-      "nodata": -9999.0,
-      "palette": {
-        "stops": [
-          -10,
-          0,
-          10,
-          20,
-          30
-        ],
-        "colors": [
-          "#313695",
-          "#74add1",
-          "#ffffbf",
-          "#f46d43",
-          "#a50026"
-        ]
-      },
-      "web_preview": "05_weather/2025/temperature_2025_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
-      "year": 2025,
-      "units": "degC",
-      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
-      "period_start": "2025-01-01",
-      "period_end": "2025-12-31",
-      "days": 365,
-      "temporal_complete": true,
-      "aggregation": "daily mean averaged over all available UTC days",
-      "downscaling": "none",
-      "native_resolution_degrees": 0.25
-    },
-    {
-      "file": "05_weather/2026/temperature_2026.tif",
-      "type": "raster",
-      "crs": "EPSG:4326",
-      "bounds": [
-        67.875,
-        39.875,
-        88.125,
-        50.125
-      ],
-      "width": 81,
-      "height": 41,
-      "resolution_degrees": [
-        0.25,
-        0.25
-      ],
-      "minimum": -10.062118530273438,
-      "maximum": 21.423404693603516,
-      "valid_pixels": 3321,
-      "nodata": -9999.0,
-      "palette": {
-        "stops": [
-          -10,
-          0,
-          10,
-          20,
-          30
-        ],
-        "colors": [
-          "#313695",
-          "#74add1",
-          "#ffffbf",
-          "#f46d43",
-          "#a50026"
-        ]
-      },
-      "web_preview": "05_weather/2026/temperature_2026_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
-      "year": 2026,
-      "units": "degC",
-      "source": "Copernicus ERA5 via Open-Meteo AWS open data",
-      "period_start": "2026-01-01",
-      "period_end": "2026-09-30",
-      "days": 273,
-      "temporal_complete": false,
-      "aggregation": "daily mean averaged over all available UTC days",
-      "downscaling": "none",
-      "native_resolution_degrees": 0.25
-    },
-    {
       "file": "05_weather/2024/precipitation_2024.tif",
       "type": "raster",
       "crs": "EPSG:4326",
@@ -236,18 +59,6 @@
           "#081d58"
         ]
       },
-      "web_preview": "05_weather/2024/precipitation_2024_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
       "year": 2024,
       "units": "mm",
       "source": "Copernicus ERA5 via Open-Meteo AWS open data",
@@ -297,18 +108,6 @@
           "#081d58"
         ]
       },
-      "web_preview": "05_weather/2025/precipitation_2025_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
       "year": 2025,
       "units": "mm",
       "source": "Copernicus ERA5 via Open-Meteo AWS open data",
@@ -358,18 +157,6 @@
           "#081d58"
         ]
       },
-      "web_preview": "05_weather/2026/precipitation_2026_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        67.87499999999999,
-        39.871693291374754,
-        88.20186771989019,
-        50.12499999999999
-      ],
-      "web_preview_size": [
-        74,
-        53
-      ],
       "year": 2026,
       "units": "mm",
       "source": "Copernicus ERA5 via Open-Meteo AWS open data",
@@ -380,6 +167,43 @@
       "aggregation": "sum over all available UTC days",
       "downscaling": "none",
       "native_resolution_degrees": 0.25
+    },
+    {
+      "file": "05_weather/daily_temperature/temperature_daily_static.json",
+      "type": "daily_grid_binary",
+      "crs": "EPSG:4326",
+      "width": 81,
+      "height": 41,
+      "resolution_degrees": [
+        0.25,
+        0.25
+      ],
+      "units": "degC",
+      "source": "Copernicus ERA5 distributed by Open-Meteo",
+      "daily_aggregation": "mean of UTC hours 00..23",
+      "periods": [
+        {
+          "year": 2024,
+          "period_start": "2024-01-01",
+          "period_end": "2024-12-31",
+          "days": 366,
+          "temporal_complete": true
+        },
+        {
+          "year": 2025,
+          "period_start": "2025-01-01",
+          "period_end": "2025-12-31",
+          "days": 365,
+          "temporal_complete": true
+        },
+        {
+          "year": 2026,
+          "period_start": "2026-01-01",
+          "period_end": "2026-10-04",
+          "days": 277,
+          "temporal_complete": false
+        }
+      ]
     }
   ],
   "research_alternatives": [
@@ -396,5 +220,7 @@
       "precipitation_resolution_degrees": 0.25,
       "decision": "not used; precipitation is inherited from ERA5 in this distribution, use same native 0.25 degree ERA5 grid for both layers"
     }
-  ]
+  ],
+  "daily_temperature_available_through": "2026-10-04",
+  "annual_precipitation_available_through": "2026-09-30"
 }

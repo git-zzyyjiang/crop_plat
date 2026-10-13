@@ -1,55 +1,83 @@
-import { getArea, getLength } from 'ol/sphere'
-import Polygon from 'ol/geom/Polygon'
-import MultiLineString from 'ol/geom/MultiLineString'
+import proj4 from 'proj4'
 
-export const DENSITY_BINS = [5, 12, 25, 40]
-export const AREA_BINS = [1, 5, 10, 25]
+export const GRID_CRS = '+proj=aea +lat_1=43 +lat_2=46 +lat_0=44 +lon_0=80 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs'
+export const COUNT_BINS = [500, 1200, 2500, 4000]
+export const AREA_BINS = [10, 30, 60, 100]
 export const COLORS = ['#e8f4b5', '#b8dd69', '#79c34d', '#e6bd48', '#ec8542']
-export const CHANGE_COLORS = { stable:'#dfe8f2', expanded:'#5cc46a', shrunk:'#e8a33f', added:'#4a90e2', removed:'#d9534f' }
-export const classify = (value, breaks) => breaks.findIndex(limit => value < limit) < 0 ? breaks.length : breaks.findIndex(limit => value < limit)
-export function analyzeParcels(features, extent, idField) {
-  const cells = new Map(), records = []
-  let area = 0, perimeter = 0, weightedX = 0, weightedY = 0
-  for (const feature of features) {
-    const geometry = feature.getGeometry()
-    if (!geometry || !['Polygon', 'MultiPolygon'].includes(geometry.getType())) continue
-    const polygons = geometry.getType() === 'Polygon' ? [geometry.getCoordinates()] : geometry.getCoordinates()
-    const hectares = Math.abs(getArea(geometry, {projection:'EPSG:4326'})) / 10000
-    if (!Number.isFinite(hectares) || hectares <= 0) continue
-    // 网格归属采用面积最大的组成面的内部点，避免多部件地块重复计数。
-    const largest = polygons.reduce((best, ring) => {
-      const polygon = new Polygon(ring)
-      return !best || getArea(polygon,{projection:'EPSG:4326'}) > getArea(best,{projection:'EPSG:4326'}) ? polygon : best
-    }, null)
-    const point = largest.getInteriorPoint().getCoordinates().slice(0,2)
-    if (point[0] < extent[0] || point[0] >= extent[2] || point[1] < extent[1] || point[1] >= extent[3]) continue
-    const key = `${Math.floor(point[0]/0.05)},${Math.floor(point[1]/0.05)}`
-    if (!cells.has(key)) cells.set(key,{x:Math.floor(point[0]/0.05)*0.05,y:Math.floor(point[1]/0.05)*0.05,count:0,area:0})
-    const cell = cells.get(key); cell.count++; cell.area += hectares
-    const boundary = getLength(new MultiLineString(polygons.flat()),{projection:'EPSG:4326'}) / 1000
-    area += hectares; perimeter += boundary
-    weightedX += point[0]*hectares; weightedY += point[1]*hectares
-    records.push({feature, hectares, id:idField ? feature.get(idField) : null})
-  }
-  const grid = [...cells.values()].map(cell => {
-    const ring = [[cell.x,cell.y],[cell.x+0.05,cell.y],[cell.x+0.05,cell.y+0.05],[cell.x,cell.y+0.05],[cell.x,cell.y]]
-    const geometry = new Polygon([ring])
-    const km2 = getArea(geometry,{projection:'EPSG:4326'}) / 1e6
-    return {...cell,geometry,density:cell.count/km2,meanArea:cell.area/cell.count}
+export const CHANGE_COLORS = ['#2166ac', '#92c5de', '#eeeeee', '#f4a582', '#b2182b']
+export const classify = (value, breaks) => breaks.filter(limit => value >= limit).length
+
+export function analyzeServerGrid(features) {
+  const grid = features.map(feature => {
+    const value = name => Number(feature.get(name))
+    const cell = {geometry:feature.getGeometry(),id:value('GRID_ID'),gx:value('GX'),gy:value('GY'),
+      count:value('N_PARCEL'),area:value('SUM_HA'),meanArea:value('MEAN_HA'),
+      density:value('DEN_KM2'),km2:value('GRID_KM2'),countClass:value('COUNT_CLS'),areaClass:value('AREA_CLS'),
+      perimeter:value('PERIM_KM'),shapeSum:value('SHAPE_SUM'),weightedShape:value('WSHAPE_SUM'),
+      cx:value('CX_SUM'),cy:value('CY_SUM'),nnSum:value('NN_SUM'),nnCount:value('NN_N')}
+    if (!['Polygon','MultiPolygon'].includes(cell.geometry?.getType()) ||
+        !Object.values(cell).filter(item=>typeof item === 'number').every(Number.isFinite) ||
+        !Number.isInteger(cell.gx) || !Number.isInteger(cell.gy) || cell.km2 !== 100 ||
+        cell.count <= 0 || cell.area <= 0 || cell.countClass !== classify(cell.count,COUNT_BINS)+1 ||
+        cell.areaClass !== classify(cell.meanArea,AREA_BINS)+1) {
+      throw new Error('服务器网格版本或统计字段无效，请检查数据同步')
+    }
+    return {...cell,key:`${cell.gx},${cell.gy}`}
   })
-  const scope = getArea(new Polygon([[[extent[0],extent[1]],[extent[2],extent[1]],[extent[2],extent[3]],[extent[0],extent[3]],[extent[0],extent[1]]]]),{projection:'EPSG:4326'}) / 1e6
-  return {records,grid,count:records.length,totalArea:area,meanArea:records.length ? area/records.length : null,
-    density:scope ? records.length/scope : null,boundaryDensity:scope ? perimeter/scope : null,
-    center:area ? [weightedX/area,weightedY/area] : null,scope}
+  if(new Set(grid.map(cell=>cell.key)).size !== grid.length) throw new Error('服务器返回重复网格')
+  return {grid}
 }
-export function compareParcels(before, after) {
-  const valid = records => records.every(r => r.id !== null && r.id !== undefined) && new Set(records.map(r=>String(r.id))).size === records.length
-  if (!valid(before.records) || !valid(after.records)) return null
-  const old = new Map(before.records.map(r=>[String(r.id),r]))
-  const changes = after.records.map(record => {
-    const previous = old.get(String(record.id)); old.delete(String(record.id))
-    const ratio = previous ? (record.hectares-previous.hectares)/previous.hectares : null
-    return {...record,kind:!previous ? 'added' : ratio >= 0.05 ? 'expanded' : ratio <= -0.05 ? 'shrunk' : 'stable'}
-  })
-  return [...changes,...[...old.values()].map(record=>({...record,kind:'removed'}))]
+
+export function summarizeGrid(grid) {
+  const sum = key => grid.reduce((total,cell)=>total+cell[key],0)
+  const count=sum('count'),totalArea=sum('area'),scope=sum('km2'),nnCount=sum('nnCount')
+  const occupied=grid.filter(cell=>cell.count>0),byKey=new Map(occupied.map(cell=>[cell.key,cell]))
+  const neighbors=cell=>[[cell.gx-1,cell.gy],[cell.gx+1,cell.gy],[cell.gx,cell.gy-1],[cell.gx,cell.gy+1]].map(([x,y])=>`${x},${y}`)
+  const adjacency=occupied.reduce((total,cell)=>total+neighbors(cell).filter(key=>byKey.has(key)).length,0)
+  const visited=new Set(),components=[]
+  for(const cell of occupied){
+    if(visited.has(cell.key)) continue
+    const queue=[cell.key],component=[];visited.add(cell.key)
+    for(let index=0;index<queue.length;index++){
+      const current=byKey.get(queue[index]);component.push(current.key)
+      for(const key of neighbors(current)) if(byKey.has(key) && !visited.has(key)){visited.add(key);queue.push(key)}
+    }
+    components.push(component)
+  }
+  const connectedKeys=new Set(components.filter(component=>component.length>1).flat())
+  const fragmentation=occupied.map(cell=>cell.count/cell.area).sort((a,b)=>a-b)
+  const hotspotThreshold=fragmentation.length ? fragmentation[Math.ceil(fragmentation.length*0.8)-1] : null
+  const hotspotKeys=new Set(occupied.filter(cell=>fragmentation[0] < fragmentation[fragmentation.length-1] && cell.count/cell.area >= hotspotThreshold).map(cell=>cell.key))
+  return {grid,count,totalArea,scope,meanArea:count ? totalArea/count : null,density:scope ? count/scope : null,
+    boundaryDensity:scope ? sum('perimeter')/scope : null,meanShape:count ? sum('shapeSum')/count : null,
+    weightedShape:totalArea ? sum('weightedShape')/totalArea : null,meanNearest:nnCount ? sum('nnSum')/nnCount : null,
+    center:totalArea ? proj4(GRID_CRS,'EPSG:4326',[sum('cx')/totalArea,sum('cy')/totalArea]) : null,
+    adjacencyRate:occupied.length ? adjacency/(4*occupied.length)*100 : null,
+    connectedKeys,hotspotKeys,hotspotThreshold,components:components.length,occupiedCount:occupied.length}
+}
+
+// Annual empty cells are zero-filled on the same three-year union grid, keeping denominators fixed.
+export function alignAnnualGrids(annual) {
+  const union=new Map()
+  for(const result of Object.values(annual)) for(const cell of result.grid) union.set(cell.key,cell)
+  return Object.fromEntries(Object.entries(annual).map(([year,result])=>{
+    const existing=new Map(result.grid.map(cell=>[cell.key,cell]))
+    const grid=[...union.values()].map(template=>existing.get(template.key) || {
+      ...template,count:0,area:0,meanArea:null,density:0,countClass:0,areaClass:0,
+      perimeter:0,shapeSum:0,weightedShape:0,cx:0,cy:0,nnSum:0,nnCount:0})
+    return [year,summarizeGrid(grid)]
+  }))
+}
+
+export function compareGridYears(before, after) {
+  if(!before || !after) return null
+  const old=new Map(before.grid.map(cell=>[cell.key,cell]))
+  return after.grid.map(cell=>({ ...cell, countDelta:cell.count-(old.get(cell.key)?.count || 0),
+    areaDelta:cell.area-(old.get(cell.key)?.area || 0)}))
+}
+
+export function changeClass(value, tolerance) {
+  if(Math.abs(value)<=tolerance) return 2
+  if(value<0) return value < -10*tolerance ? 0 : 1
+  return value > 10*tolerance ? 4 : 3
 }

@@ -49,18 +49,6 @@
           "#ffffff"
         ]
       },
-      "web_preview": "03_terrain/elevation_m_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        68.0,
-        39.99727284181007,
-        88.00101294902706,
-        49.99999999999999
-      ],
-      "web_preview_size": [
-        2048,
-        1454
-      ],
       "units": "m",
       "source": "Mapzen Terrain Tiles z8"
     },
@@ -102,18 +90,6 @@
           "#004529"
         ]
       },
-      "web_preview": "03_terrain/slope_deg_web3857.png",
-      "web_preview_crs": "EPSG:3857",
-      "web_preview_bounds_wgs84": [
-        68.0,
-        39.99727284181007,
-        88.00101294902706,
-        49.99999999999999
-      ],
-      "web_preview_size": [
-        2048,
-        1454
-      ],
       "units": "degree",
       "source": "gradient of elevation_m.tif; metric distances corrected by latitude"
     }
